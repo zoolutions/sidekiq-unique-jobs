@@ -1,6 +1,6 @@
 ---
 description: Review a GitHub pull request for code quality, patterns, and best practices
-model: claude-opus-4-6
+model: opus
 argument-hint: "PR URL or number (e.g., 923 or https://github.com/mhenrixon/sidekiq-unique-jobs/pull/923)"
 ---
 

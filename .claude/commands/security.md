@@ -1,6 +1,6 @@
 ---
 description: "Reviews code for security vulnerabilities. Use when auditing Redis operations, checking for injection risks, reviewing Lua scripts, or scanning for unsafe patterns."
-model: claude-opus-4-6
+model: opus
 argument-hint: "code, feature, or area to review for security"
 ---
 
