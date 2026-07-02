@@ -1,5 +1,6 @@
 ---
 description: "Use when implementing any feature or fixing any bug -- enforces RED-GREEN-REFACTOR: write failing test first, implement minimum code to pass, then refactor."
+model: sonnet
 ---
 
 # TDD Command

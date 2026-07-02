@@ -176,6 +176,10 @@ Workers can define `after_unlock` instance or class method for cleanup after loc
 - `spec/` - RSpec test suite organized by component
 - `myapp/` - Example Rails application for testing and development
 
+## Working with Claude in this repo
+
+Commands and agents pin a model tier via frontmatter aliases: `sonnet` for CI/review/TDD specialists, `opus` for orchestration, security, and PR review. Use aliases, not full model IDs, so commands track the latest model in each tier. When spawning subagents for mechanical work (file finding, pattern scans), pass a cheaper model explicitly rather than letting them inherit the session model.
+
 ## Common Pitfalls
 
 1. **Lock digest issues**: If uniqueness isn't working as expected, check what's included in the digest (queue, worker class, args). Use `lock_info: true` to debug.
