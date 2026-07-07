@@ -73,11 +73,14 @@ When a duplicate is detected, the conflict strategy determines what happens:
 
 | Strategy | Behavior |
 |----------|----------|
-| `:log` (default) | Log and discard the duplicate |
+| _(none, default)_ | Silently discard the duplicate — no log line, no error |
+| `:log` | Log and discard the duplicate |
 | `:raise` | Raise `SidekiqUniqueJobs::OnConflict::Raise` |
 | `:reject` | Send to dead set |
 | `:replace` | Delete the existing job and enqueue the new one |
 | `:reschedule` | Schedule the duplicate to run later |
+
+If `on_conflict` is omitted (and no global `config.on_conflict` is set), conflicts resolve to `SidekiqUniqueJobs::OnConflict::NullStrategy`, a no-op.
 
 ```ruby
 sidekiq_options lock: :until_executed,
