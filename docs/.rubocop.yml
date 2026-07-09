@@ -1,0 +1,26 @@
+---
+plugins:
+- rubocop-rspec
+inherit_gem:
+  rubocop-rails-omakase: rubocop.yml
+  docs-kit:
+  - config/rubocop/docs_kit.yml
+require:
+- docs_kit/rubocop
+
+# An explicit Include is what lets this nested app lint itself: the gem's
+# repo-root .rubocop.yml (an ancestor RuboCop auto-discovers) excludes
+# docs/**/*, so without re-including the app + spec trees here, a run from
+# docs/ would inspect nothing.
+AllCops:
+  NewCops: enable
+  Include:
+  - app/**/*.rb
+  - spec/**/*.rb
+  - config/initializers/*.rb
+  - Rakefile
+  - config.ru
+
+# Smoke specs iterate the whole Doc registry and assert per page.
+RSpec/MultipleExpectations:
+  Enabled: false

@@ -1,0 +1,66 @@
+source "https://rubygems.org"
+
+# docs-kit shared docs chrome + its runtime deps
+gem "docs-kit"
+gem "daisyui", require: "daisy_ui"
+gem "phlex-rails"
+gem "rails_icons", "~> 1.1"
+gem "rouge"
+
+# The documented gem itself — the sidebar version badge reads its VERSION
+# constant. Only the version file is required at boot (requiring the full gem
+# would pull in Sidekiq + a Redis connection, which the docs app has no use for).
+gem "sidekiq-unique-jobs", path: "..", require: "sidekiq_unique_jobs/version"
+
+# Optional: expose these docs to AI agents over MCP (a read-only /mcp endpoint).
+# Uncomment this and the /mcp route in config/routes.rb. See the docs-kit README.
+# gem "mcp"
+
+# Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
+gem "rails", "~> 8.1.3"
+# The modern asset pipeline for Rails [https://github.com/rails/propshaft]
+gem "propshaft"
+# Use the Puma web server [https://github.com/puma/puma]
+gem "puma", ">= 5.0"
+# Use JavaScript with ESM import maps [https://github.com/rails/importmap-rails]
+gem "importmap-rails"
+# Hotwire's SPA-like page accelerator [https://turbo.hotwired.dev]
+gem "turbo-rails"
+# Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
+gem "stimulus-rails"
+
+# Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
+# gem "bcrypt", "~> 3.1.7"
+
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
+gem "thruster", require: false
+
+group :development, :test do
+  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
+
+  # Audits gems for known security defects (use config/bundler-audit.yml to ignore issues)
+  gem "bundler-audit", require: false
+
+  # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
+  gem "brakeman", require: false
+
+  # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
+  gem "rubocop-rails-omakase", require: false
+
+  # RuboCop inherits AllCops:Exclude from the PARENT repo's .rubocop.yml
+  # (add_excludes_from_files walks up), which integrates that config's plugins —
+  # so the gems the gem-level config plugs in must be resolvable here too.
+  gem "rubocop-rake", require: false
+  gem "rubocop-rspec", require: false
+
+  gem "rspec-rails"
+end
+
+group :development do
+  # Use console on exceptions pages [https://github.com/rails/web-console]
+  gem "web-console"
+end
