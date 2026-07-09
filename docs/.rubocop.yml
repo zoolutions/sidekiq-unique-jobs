@@ -1,0 +1,13 @@
+---
+plugins:
+- rubocop-rspec
+inherit_gem:
+  rubocop-rails-omakase: rubocop.yml
+  docs-kit:
+  - config/rubocop/docs_kit.yml
+require:
+- docs_kit/rubocop
+
+# Smoke specs iterate the whole Doc registry and assert per page.
+RSpec/MultipleExpectations:
+  Enabled: false
