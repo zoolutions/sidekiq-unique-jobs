@@ -24,7 +24,7 @@ Gem::Specification.new do |spec|
 
   spec.metadata = {
     "bug_tracker_uri" => "https://github.com/mhenrixon/sidekiq-unique-jobs/issues",
-    "documentation_uri" => "https://mhenrixon.github.io/sidekiq-unique-jobs",
+    "documentation_uri" => "https://sidekiq-unique-jobs.zoolutions.llc",
     "source_code_uri" => "https://github.com/mhenrixon/sidekiq-unique-jobs/tree/v#{spec.version}",
     "changelog_uri" => "https://github.com/mhenrixon/sidekiq-unique-jobs/blob/main/CHANGELOG.md",
     "funding_uri" => "https://github.com/sponsors/mhenrixon",

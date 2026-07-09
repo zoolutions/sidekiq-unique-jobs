@@ -16,6 +16,15 @@ AllCops:
     - "assets/**/*"
     - "bin/**/*"
     - "doc/**/*"
+    # The docs site (docs/) is a self-contained nested Rails app with its own
+    # .rubocop.yml (docs-kit's shipped cops + rubocop-rails-omakase). It lints
+    # itself in its own CI job; the gem's cops don't apply to it. BOTH patterns
+    # are required: `docs/**/*` excludes the files, but RuboCop's target finder
+    # still DESCENDS into docs/ and loads docs/.rubocop.yml — which `require`s
+    # gems (docs_kit/rubocop) not in the gem's bundle, crashing the run before a
+    # file is inspected. The bare `docs` entry prunes the directory from traversal
+    # so its config is never read.
+    - "docs"
     - "docs/**/*"
     - "lib/sidekiq_unique_jobs/lua/**/*"
     - "lib/sidekiq_unique_jobs/web/views/**/*"

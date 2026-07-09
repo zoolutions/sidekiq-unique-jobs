@@ -7,6 +7,7 @@
 .ruby-version
 /.byebug_history
 /.yardoc/
+/doc/
 /gemfiles/.bundle/
 /sidekiq/
 coverage/

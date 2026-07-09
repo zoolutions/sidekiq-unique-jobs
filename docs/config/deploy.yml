@@ -1,0 +1,41 @@
+# Kamal deploy → the oss-infrastructure server (Cloudflare Tunnel + kamal-proxy).
+# service/image = the repo OWNER/REPO so the ghcr package auto-links to the
+# repo and GITHUB_TOKEN can push + pull it (no PAT). See docs-kit's README.
+service: sidekiq-unique-jobs
+image: mhenrixon/sidekiq-unique-jobs
+
+servers:
+  web:
+    hosts:
+      - <%= ENV["DEPLOY_HOST"] %>
+
+ssh:
+  user: <%= ENV.fetch("DEPLOY_SSH_USER", "oss") %>
+
+proxy:
+  host: <%= ENV["DEPLOY_DOMAIN"] %>
+  app_port: 3000
+  ssl: false
+  healthcheck:
+    path: /up
+    interval: 5
+    timeout: 30
+
+registry:
+  server: ghcr.io
+  username: mhenrixon
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  context: ..
+  dockerfile: Dockerfile
+
+env:
+  clear:
+    RAILS_SERVE_STATIC_FILES: "true"
+    RAILS_LOG_TO_STDOUT: "true"
+    # A stateless docs site: SECRET_KEY_BASE only signs cookies, so it's
+    # inlined (no user data at risk). Rotate with `bin/rails secret`.
+    SECRET_KEY_BASE: "50c2471ca959a09ab2d1f59320963e26edb3747fa5e750e46e74658ee8e75e134c140fefd277ec3f746ad2777b5ed215f0f747029ad7b64167e7a062022f67f8"

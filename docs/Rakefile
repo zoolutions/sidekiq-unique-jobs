@@ -1,0 +1,31 @@
+# frozen_string_literal: true
+
+# Add your own tasks in files placed in lib/tasks ending in .rake,
+# for example lib/tasks/capistrano.rake, and they will automatically be available to Rake.
+
+require_relative "config/application"
+
+Rails.application.load_tasks
+
+# RuboCop for this nested app. The gem's repo-root .rubocop.yml excludes
+# `docs/**/*` (correct for ITS run) and RuboCop merges that exclude in, which
+# would silently lint zero files here when a bare `rubocop` or a directory glob
+# is used. Passing the file list explicitly bypasses the inherited exclude, so
+# `rake lint` actually checks this app.
+begin
+  require "rubocop"
+
+  lint_files = -> { Dir.glob(%w[app/**/*.rb spec/**/*.rb config/**/*.rb Rakefile config.ru]) }
+
+  desc "Lint the docs site with RuboCop"
+  task :lint do # rubocop:disable Rails/RakeEnvironment
+    sh "bundle", "exec", "rubocop", *lint_files.call
+  end
+
+  desc "Lint and autocorrect"
+  task "lint:fix" do # rubocop:disable Rails/RakeEnvironment
+    sh "bundle", "exec", "rubocop", "-A", *lint_files.call
+  end
+rescue LoadError
+  # RuboCop isn't in the production bundle; the lint tasks simply don't load.
+end

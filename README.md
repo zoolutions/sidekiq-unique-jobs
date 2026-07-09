@@ -4,6 +4,8 @@ Prevents duplicate Sidekiq jobs. Uses Redis locks to ensure only one job with th
 
 [![Build Status](https://github.com/mhenrixon/sidekiq-unique-jobs/actions/workflows/rspec.yml/badge.svg?branch=main)](https://github.com/mhenrixon/sidekiq-unique-jobs/actions)
 
+📚 **[Full documentation →](https://sidekiq-unique-jobs.zoolutions.llc)** — concepts, use-case guides, and reference.
+
 ## Support Me
 
 Want to show me some love for the hard work I do on this gem? You can use the following PayPal link: [https://paypal.me/mhenrixon2](https://paypal.me/mhenrixon2). Any amount is welcome and let me tell you it feels good to be appreciated. Even a dollar makes me super excited about all of this.

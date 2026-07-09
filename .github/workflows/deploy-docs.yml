@@ -1,0 +1,16 @@
+name: Deploy docs
+# Build + deploy the docs/ site via docs-kit's reusable workflow (defined once
+# for all sites). Fires on a published release so the docs track shipped gems.
+on:
+  release: { types: [published] }
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  deploy:
+    uses: mhenrixon/docs-kit/.github/workflows/deploy.yml@main
+    with:
+      image: mhenrixon/sidekiq-unique-jobs
+      service: sidekiq-unique-jobs
+    secrets: inherit

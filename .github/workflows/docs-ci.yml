@@ -1,0 +1,65 @@
+name: Docs site
+
+# The docs site (docs/) is a self-contained nested Rails app built with docs-kit.
+# It has its own bundle and toolchain, so it gets its own CI job — the gem's
+# rspec/lint workflows do not touch it. Runs only when docs/ changes.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-ci.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs-ci.yml"
+
+permissions:
+  contents: read
+
+# Cancel an in-flight run when a newer commit lands on the same ref, so rapid
+# pushes on docs/** don't queue redundant full builds (Ruby + Bun + CSS + tests).
+concurrency:
+  group: docs-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: docs
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    name: Build & test
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          # The docs Gemfile has a path dep on the gem at the repo root, so the
+          # bundle must resolve against the checked-out repo. Cache scoped to
+          # docs/Gemfile.lock.
+          bundler-cache: true
+          working-directory: docs
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Sync lucide icons
+        run: bin/rails g rails_icons:sync --library=lucide --force --quiet
+
+      - name: Build CSS
+        run: bun install && bun run build:css
+
+      - name: Lint
+        run: bundle exec rake lint
+
+      - name: Test
+        run: bundle exec rspec

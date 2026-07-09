@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* daisyUI — the theme list MUST match DocsKit.configuration.themes. */
+@plugin "daisyui" {
+  themes: dark --default, light --prefersdark, synthwave, retro, cyberpunk,
+    dracula, night, nord, sunset;
+}
+
+/* Tailwind scans this app's views + the daisyui/docs-kit GEMS (their install dir
+   varies by environment, so bin/build-css resolves them into the imported file). */
+@source "../../../app/views/**/*.{rb,erb,haml,html,slim}";
+@source "../../../app/components/**/*.rb";
+@source "../../../app/helpers/**/*.rb";
+@source "../../../app/javascript/**/*.js";
+@source "../../../public/*.html";
+@import "./tailwind.sources.css";
+
+/* daisyUI Drawer classes are emitted at render time (never literal) — force them
+   so the shell isn't tree-shaken. */
+@source inline("drawer drawer-content drawer-side drawer-toggle drawer-overlay {lg:}drawer-open drawer-end");
+
+/* Search palette classes the docs-nav controller applies at RUN TIME (JS only —
+   bin/build-css scans the gems' .rb, not their .js), so force them here. The
+   dropdown/menu/input structure is literal in DocsUI::SearchBox and scanned; only
+   these JS-toggled classes need forcing. */
+@source inline("menu-title menu-active");
+
+/* Responsive drawer-open — sidebar always visible on desktop. */
+@media (width >= 1024px) {
+  .lg\:drawer-open { display: grid !important; grid-auto-columns: max-content auto !important; }
+  .lg\:drawer-open > .drawer-toggle { display: none !important; }
+  .lg\:drawer-open > .drawer-toggle ~ .drawer-side,
+  .lg\:drawer-open > .drawer-side {
+    pointer-events: auto !important; visibility: visible !important; position: sticky !important;
+    top: 0 !important; display: block !important; width: auto !important;
+    height: 100dvh !important; overflow-y: auto !important; opacity: 1 !important;
+  }
+  .lg\:drawer-open > .drawer-side > .drawer-overlay { background-color: transparent !important; }
+}
