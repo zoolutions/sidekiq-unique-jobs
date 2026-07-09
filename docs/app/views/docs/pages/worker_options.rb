@@ -21,14 +21,15 @@ class Views::Docs::Pages::WorkerOptions < DocsUI::Page
         Uniqueness is configured on the worker with `sidekiq_options`. Only `lock:`
         is required — it names the [lock type](/docs/choosing-a-lock-type) and
         turns uniqueness on. Everything else tunes how the lock is keyed, how long
-        it lives, how long a duplicate waits, and what happens when one loses the
-        race.
+        it lives, and what happens when a duplicate loses the race. Locks in v9 are
+        non-blocking: a contended job never waits — it fails its one attempt and the
+        conflict strategy fires immediately.
       MD
 
       DocsUI::PropTable([
         [ "lock", "Symbol", "—", "The lock type. Required to enable uniqueness. See the lock-type table below." ],
         [ "lock_ttl", "Integer (seconds)", "nil", "How long the lock lives in Redis, measured from when it is created — not from when the job finishes." ],
-        [ "lock_timeout", "Integer (seconds)", "0", "How long a client blocks waiting for a held lock before giving up and invoking the conflict strategy. 0 = fail immediately." ],
+        [ "lock_timeout", "Integer (seconds)", "0", "Parsed and stored in lock metadata, but inert for acquisition in v9's non-blocking model — it does not make a job wait. A contended lock fails its single attempt and the conflict strategy runs immediately." ],
         [ "lock_limit", "Integer", "1", "How many concurrent holders of the same digest are allowed before a job is treated as a duplicate." ],
         [ "on_conflict", "Symbol or Hash", "nil", "What to do with a duplicate. A single symbol, or {client:, server:} to split the two sides. See the strategy table below." ],
         [ "lock_args_method", "Symbol or Proc", "nil", "Selects which arguments matter for uniqueness. A symbol naming a class method, or a lambda; returns the subset of args to key on." ],
@@ -98,9 +99,8 @@ class Views::Docs::Pages::WorkerOptions < DocsUI::Page
     DocsUI::Section("A worker using many options at once") do
       md <<~'MD'
         Nothing about these options is mutually exclusive. A single worker can pin
-        the lock type, cap the lock's lifetime, wait briefly for contention, filter
-        which arguments matter, and split its conflict behavior across client and
-        server:
+        the lock type, cap the lock's lifetime, filter which arguments matter, and
+        split its conflict behavior across client and server:
       MD
 
       DocsUI::Code(<<~RUBY)
@@ -109,7 +109,6 @@ class Views::Docs::Pages::WorkerOptions < DocsUI::Page
 
           sidekiq_options lock: :until_and_while_executing,
                           lock_ttl: 3_600,
-                          lock_timeout: 5,
                           lock_args_method: :unique_args,
                           unique_across_queues: true,
                           lock_info: true,
@@ -130,10 +129,10 @@ class Views::Docs::Pages::WorkerOptions < DocsUI::Page
 
       md <<~'MD'
         Here the lock is held from enqueue through the end of the run, capped at one
-        hour, and a duplicate enqueue waits up to five seconds before it is logged
-        and dropped, while a duplicate that reaches the server is rescheduled.
-        Because `lock_args_method` keys only on `account_id`, two calls with
-        different `requested_at` values are still the same job.
+        hour. A duplicate enqueue is logged and dropped immediately — locks are
+        non-blocking, so nothing waits — while a duplicate that reaches the server is
+        rescheduled. Because `lock_args_method` keys only on `account_id`, two calls
+        with different `requested_at` values are still the same job.
       MD
     end
   end

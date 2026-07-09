@@ -47,7 +47,6 @@ class Views::Docs::Pages::SerializePerResource < DocsUI::Page
           include Sidekiq::Job
 
           sidekiq_options lock: :while_executing,
-                          lock_timeout: 10,
                           on_conflict: :reschedule
 
           def perform(account_id)
@@ -61,12 +60,12 @@ class Views::Docs::Pages::SerializePerResource < DocsUI::Page
         - `lock: :while_executing` — the lock is taken on the **server**, right
           before `perform`, and released right after. It has no effect at enqueue
           time.
-        - `lock_timeout: 10` — when a copy for the same account is already running,
-          wait up to 10 seconds for it to finish before giving up.
-        - `on_conflict: :reschedule` — if the wait runs out, re-enqueue this copy
-          to try again later instead of dropping it. Because `:while_executing`
-          conflicts happen during execution, this is a **server** conflict
-          strategy.
+        - `on_conflict: :reschedule` — v9 locks are **non-blocking**: when a copy
+          for the same account is already running, this copy's single acquisition
+          attempt fails and the conflict strategy fires immediately. `:reschedule`
+          re-enqueues this copy to run later (~5s by default) instead of dropping
+          it. Because `:while_executing` conflicts happen during execution, this is
+          a **server** conflict strategy.
       MD
     end
   end
@@ -79,13 +78,15 @@ class Views::Docs::Pages::SerializePerResource < DocsUI::Page
 
         1. **Copy A** reaches `perform`. `:while_executing` acquires the lock keyed
            on `[42]` and starts syncing.
-        2. **Copy B** reaches `perform` a moment later and tries to acquire the
-           same lock. It's held, so B **blocks**, waiting up to `lock_timeout`
-           (10s).
-        3. If A finishes and releases the lock within 10 seconds, B acquires it and
-           runs — the two syncs happen back-to-back, never concurrently.
-        4. If A is still running when B's 10 seconds elapse, B's acquisition fails
-           and `on_conflict: :reschedule` re-enqueues B to try again later.
+        2. **Copy B** reaches `perform` a moment later and makes its **single**
+           attempt to acquire the same lock. It's held by A, so B's attempt fails
+           right away — v9 locks are non-blocking, so B does **not** wait.
+        3. `on_conflict: :reschedule` fires immediately: B is re-enqueued to run
+           later (~5s by default). It is not resumed in place when A finishes — it
+           comes back around as a fresh job and tries again.
+        4. When B's rescheduled run lands and account `42` is free, it acquires the
+           lock and syncs — the two runs happen one after another, never
+           concurrently.
 
         Meanwhile a `SyncAccountBalanceJob` for account `43` has a **different**
         digest, so it never contends with either — it runs in parallel.
@@ -112,7 +113,6 @@ class Views::Docs::Pages::SerializePerResource < DocsUI::Page
           include Sidekiq::Job
 
           sidekiq_options lock: :while_executing,
-                          lock_timeout: 10,
                           on_conflict: :reschedule,
                           lock_args_method: :unique_args
 

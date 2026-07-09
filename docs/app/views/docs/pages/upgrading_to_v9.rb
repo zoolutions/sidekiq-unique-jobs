@@ -53,8 +53,8 @@ class Views::Docs::Pages::UpgradingToV9 < DocsUI::Page
           first, then upgrade this gem.
         - **Ruby 3.2 or newer only.** Older Rubies are no longer supported.
         - **The changelog history feature is gone.** v8 recorded a per-lock
-          event log; v9 removes it in favor of the reflection system. See
-          [Changelog history is gone](/docs/upgrading-to-v9) below.
+          event log; v9 removes it in favor of the reflection system. See the
+          "Changelog history is gone" section below.
         - **The Redis data model changed.** A lock is now two keys instead of up
           to thirteen. The upgrade rewrites your existing locks into the new
           shape automatically — you do not touch Redis yourself.
@@ -152,7 +152,7 @@ class Views::Docs::Pages::UpgradingToV9 < DocsUI::Page
 
       DocsUI::Callout(:tip) do
         plain "Consider enabling ReliableFetch while you are here — v9 makes it opt-in with a single config line so jobs survive a crashed worker. See "
-        a(href: "/docs/reliable-fetch") { "Reliable fetch" }
+        a(href: "/docs/reliablefetch") { "ReliableFetch" }
         plain "."
       end
     end

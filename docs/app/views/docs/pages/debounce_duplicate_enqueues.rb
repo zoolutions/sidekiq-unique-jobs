@@ -78,9 +78,11 @@ class Views::Docs::Pages::DebounceDuplicateEnqueues < DocsUI::Page
            the digest of `ReindexProductJob` + `search` + `[42]`. The job sits in
            the queue, locked.
         2. **Duplicates arrive while it waits.** Two more triggers fire
-           `perform_async(42)` before a worker picks the job up. Each tries to
-           acquire the same lock, finds it held, and is **discarded** (the default
-           conflict strategy logs and drops it). The queue still holds exactly one
+           `perform_async(42)` before a worker picks the job up. Each makes a
+           single attempt to acquire the same lock, finds it held, and is
+           **silently discarded** — by default nothing is logged; the duplicate
+           is simply dropped. (Set `on_conflict: :log` if you want each dropped
+           duplicate written to the log.) The queue still holds exactly one
            reindex for product 42.
         3. **A worker picks it up.** Just **before** `perform` runs, the server
            middleware releases the lock. The digest is now free.
@@ -107,7 +109,7 @@ class Views::Docs::Pages::DebounceDuplicateEnqueues < DocsUI::Page
 
       DocsUI::PropTable([
         [ "lock_ttl", "Integer (seconds)", "nil", "A safety expiry for the lock. Measured from when the lock is created (at enqueue), not from job completion. Set this so a crash between enqueue and pickup can't wedge the digest forever." ],
-        [ "on_conflict", "Symbol", ":log", "What to do with a duplicate. The default logs and drops it. Use :reschedule to re-enqueue the duplicate to run later, or :replace to swap the queued job for the newer one." ]
+        [ "on_conflict", "Symbol", "nil", "What to do with a duplicate. Unset, the duplicate is silently discarded — nothing is logged. Set :log to have each dropped duplicate logged, :reschedule to re-enqueue it to run later, or :replace to swap the queued job for the newer one." ]
       ])
 
       md <<~'MD'
@@ -132,10 +134,11 @@ class Views::Docs::Pages::DebounceDuplicateEnqueues < DocsUI::Page
       RUBY
 
       md <<~'MD'
-        See [Conflict resolution](/docs/conflict-resolution) for every strategy,
-        and note that `lock_ttl` bounds the lock's lifetime while `lock_timeout`
-        bounds how long a client *waits* to acquire a held lock — they're
-        independent.
+        See [Conflict resolution](/docs/conflict-resolution) for every strategy.
+        Note that `lock_ttl` bounds the lock's *lifetime* in Redis. Lock
+        acquisition itself is non-blocking in v9 — a contended enqueue makes one
+        attempt and, on failure, the conflict strategy fires immediately. A job
+        never waits for a held lock to free up.
       MD
     end
   end

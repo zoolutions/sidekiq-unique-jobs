@@ -10,7 +10,7 @@ class Views::Docs::Pages::BoundedConcurrency < DocsUI::Page
     the_problem
     the_worker
     how_lock_limit_works
-    tuning_the_wait
+    handling_overflow
   end
 
   private
@@ -34,8 +34,8 @@ class Views::Docs::Pages::BoundedConcurrency < DocsUI::Page
     DocsUI::Section("A worker capped at three", description: "while_executing with lock_limit: 3.") do
       md <<~'MD'
         Here at most three `ExportToVendorJob` runs for the same `account_id` may
-        execute at once. A fourth waits up to five seconds for a slot; if none
-        opens, it is rescheduled to run later instead of being dropped.
+        execute at once. A fourth makes one attempt, finds no free slot, and is
+        rescheduled to run later instead of being dropped.
       MD
 
       DocsUI::Code(<<~RUBY)
@@ -44,7 +44,6 @@ class Views::Docs::Pages::BoundedConcurrency < DocsUI::Page
 
           sidekiq_options lock: :while_executing,
                           lock_limit: 3,
-                          lock_timeout: 5,
                           on_conflict: :reschedule
 
           def perform(account_id, report_id)
@@ -75,8 +74,7 @@ class Views::Docs::Pages::BoundedConcurrency < DocsUI::Page
 
       DocsUI::PropTable([
         [ "lock_limit", "Integer", "1", "Maximum concurrent holders of the same digest" ],
-        [ "lock_timeout", "Integer (seconds)", "0", "How long the N+1th job waits for a slot before conflicting" ],
-        [ "on_conflict", "Symbol", "nil", "What to do with a job that can't get a slot in time" ]
+        [ "on_conflict", "Symbol", "nil", "What to do with the (N+1)th job when every slot is taken" ]
       ])
 
       DocsUI::Callout(:note) do
@@ -85,31 +83,35 @@ class Views::Docs::Pages::BoundedConcurrency < DocsUI::Page
     end
   end
 
-  def tuning_the_wait
-    DocsUI::Section("Make extra jobs wait, then decide") do
+  def handling_overflow
+    DocsUI::Section("What happens to the overflow job") do
       md <<~'MD'
-        `lock_limit` alone rejects the surplus job the instant every slot is taken.
-        Pair it with `lock_timeout` so the extra job **blocks** for a while first —
-        a slot may free up as a running job finishes, and then the waiter simply
-        proceeds. Only if the timeout elapses does the `on_conflict` strategy fire.
+        Locks in v9 are **non-blocking**: the (N+1)th job makes a single attempt to
+        acquire a slot, and if every slot is taken it does **not** wait — the
+        `on_conflict` strategy fires immediately. Choose that strategy to decide
+        where the surplus job goes.
 
-        - `lock_timeout: 5` — wait up to five seconds for a free slot.
-        - `on_conflict: :reschedule` — if none opens, re-enqueue to try later
-          (instead of the default of logging and discarding).
+        - `on_conflict: :reschedule` — re-enqueue the job to try again later (about
+          five seconds out by default), which is what you usually want for pacing.
+        - Leaving `on_conflict` unset means the surplus job is **silently
+          discarded** — nothing is logged. Set `on_conflict: :log` if you want the
+          conflict recorded.
 
-        The interplay of these two is the whole story of pacing work; see
-        [TTL and timeouts](/docs/ttl-and-timeouts) for exactly what each one bounds,
-        and [Conflict resolution](/docs/conflict-resolution) for the other things a
-        blocked job can do.
+        See [Conflict resolution](/docs/conflict-resolution) for every strategy and
+        exactly what each one does with a job that can't get a slot.
       MD
+
+      DocsUI::Callout(:note) do
+        plain "lock_timeout does not make a job wait for a slot in v9 — acquisition is a single non-blocking attempt. Overflow jobs retry later only because on_conflict: :reschedule re-enqueues them, not because they blocked."
+      end
 
       md <<~'MD'
         ### Related
 
         - **[Serialize per resource](/docs/serialize-per-resource)** — the
           `lock_limit: 1` case: strictly one job at a time per resource.
-        - **[TTL and timeouts](/docs/ttl-and-timeouts)** — how the waiting window
-          and the lock's lifetime differ.
+        - **[Conflict resolution](/docs/conflict-resolution)** — every strategy for
+          the overflow job.
       MD
     end
   end

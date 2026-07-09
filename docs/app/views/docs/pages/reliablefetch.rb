@@ -120,7 +120,10 @@ class Views::Docs::Pages::Reliablefetch < DocsUI::Page
       md <<~'MD'
         A normal v9 lock is just two Redis structures (see the
         [Overview](/docs/overview)). ReliableFetch adds two more per process —
-        keyed by the process **identity** (`hostname:pid`), not by the digest:
+        keyed by the process **identity** (`hostname:pid:random-hex`), not by
+        the digest. The trailing random hex suffix disambiguates a restarted
+        process from a stale working list left behind on the same host and pid,
+        so recovery never confuses the two:
       MD
 
       DocsUI::Code(<<~TEXT, lexer: :text)

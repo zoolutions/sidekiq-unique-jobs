@@ -171,7 +171,7 @@ class Views::Docs::Pages::Observability < DocsUI::Page
 
         Reaching for the delete button often means a process crashed without
         cleaning up. That's exactly what the reaper handles automatically — see
-        [Orphaned locks](/docs/orphaned-locks).
+        [Orphaned locks and recovery](/docs/orphaned-locks-and-recovery).
       MD
     end
   end

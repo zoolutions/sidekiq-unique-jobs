@@ -4,7 +4,7 @@ class Views::Docs::Pages::TtlAndTimeouts < DocsUI::Page
   title "TTL and timeouts"
   eyebrow "Concepts"
 
-  def lead = "lock_ttl and lock_timeout sound alike and are constantly confused — one bounds how long the lock lives, the other bounds how long you wait to get it."
+  def lead = "lock_ttl and lock_timeout sound alike and are constantly confused — one bounds how long the lock lives; the other historically bounded how long you wait to get it, but is inert under v9's non-blocking model."
 
   def content
     the_confusion
@@ -24,16 +24,18 @@ class Views::Docs::Pages::TtlAndTimeouts < DocsUI::Page
         questions:
 
         - **`lock_ttl`** — how long the **lock lives** in Redis before it expires
-          on its own.
-        - **`lock_timeout`** — how long a client will **wait to acquire** a lock
-          that someone else is already holding, before giving up.
+          on its own. This is real and important.
+        - **`lock_timeout`** — historically, how long a client would **wait to
+          acquire** a contended lock before giving up. In **v9 this no longer
+          waits**: acquisition is a single non-blocking attempt, so
+          `lock_timeout` does not delay anything.
 
-        One is about the lock's *lifetime*. The other is about your *patience*.
-        They do not interact, and setting one tells you nothing about the other.
+        One is about the lock's *lifetime* — and it works. The other used to be
+        about your *patience* — but v9 removed the waiting entirely.
       MD
 
       DocsUI::Callout(:tip) do
-        plain "The mental model: ttl bounds the lock's lifetime; timeout bounds how long you wait to get it."
+        plain "The mental model: lock_ttl bounds the lock's real lifetime. lock_timeout historically bounded the acquisition wait, but v9 acquisition is non-blocking, so lock_timeout no longer causes waiting."
       end
     end
   end
@@ -82,7 +84,7 @@ class Views::Docs::Pages::TtlAndTimeouts < DocsUI::Page
           lock eventually goes away on its own.
         - Leave `lock_ttl` unset (`nil`, the default) and the lock has **no
           expiry** — it lives until the job's lifecycle releases it, backed by the
-          [reaper](/docs/one-per-period) for orphan cleanup.
+          [reaper](/docs/orphaned-locks-and-recovery) for orphan cleanup.
       MD
 
       DocsUI::Callout(:warning) do
@@ -92,28 +94,41 @@ class Views::Docs::Pages::TtlAndTimeouts < DocsUI::Page
   end
 
   def lock_timeout
-    DocsUI::Section("lock_timeout — how long you wait to acquire", description: "0 (the default) means fail fast: don't wait, act on the conflict immediately.") do
+    DocsUI::Section("lock_timeout — historically the acquisition wait, inert in v9", description: "v9 acquisition is non-blocking: lock_timeout no longer makes anything wait.") do
       md <<~'MD'
-        `lock_timeout` controls what happens when the lock you want is **already
-        held** by another copy of the job. It is the number of seconds the client
-        will **block, waiting** for that lock to free up before it gives up and
-        hands the duplicate to your [conflict strategy](/docs/conflict-resolution).
+        `lock_timeout` was, in earlier versions, the number of seconds a client
+        would **block, waiting** for a contended lock to free up before giving up
+        and handing the duplicate to your
+        [conflict strategy](/docs/conflict-resolution).
 
-        The default is `0`, which means **do not wait at all**. If the lock is
-        taken, the client fails immediately and the conflict strategy runs right
-        away. This "fail fast" behavior is what you want for debouncing — a
-        duplicate enqueue should be dropped now, not queued up behind the
-        original.
+        **In v9 this waiting no longer happens.** Lock acquisition is a single,
+        non-blocking attempt: the job either gets the lock or it does not, and on
+        failure the conflict strategy fires **immediately**. `lock_timeout` is
+        still parsed and stored in the lock's metadata, but it does **not** cause
+        the client — or a `:while_executing` server lock — to wait for a held
+        lock. There is no "wait up to N seconds and then acquire it" behavior in
+        v9. The default remains `0`.
+      MD
+
+      DocsUI::Callout(:warning) do
+        plain "Do not size lock_timeout expecting a job to wait. In v9 acquisition never blocks: a contended lock fails on its one attempt and the conflict strategy runs at once."
+      end
+
+      md <<~'MD'
+        Because acquisition never blocks, the way to handle contention is the
+        **conflict strategy**, not a timeout. If you want a duplicate to try again
+        later, use `:reschedule` — it re-enqueues the job to run shortly after
+        (about five seconds later by default):
       MD
 
       DocsUI::Code(<<~RUBY)
         class ProcessUploadJob
           include Sidekiq::Job
 
-          # Serialize per-account processing. If one is already running,
-          # wait up to 5 seconds for it to finish before deciding what to do.
+          # Serialize per-account processing. If one is already running, the
+          # duplicate fails its single acquisition attempt immediately and
+          # :reschedule re-enqueues it to try again a few seconds later.
           sidekiq_options lock: :while_executing,
-                          lock_timeout: 5,
                           on_conflict: :reschedule
 
           def perform(account_id)
@@ -123,22 +138,21 @@ class Views::Docs::Pages::TtlAndTimeouts < DocsUI::Page
       RUBY
 
       md <<~'MD'
-        With `lock_timeout: 5` above, a second job for the same account will
-        block for up to five seconds hoping the running job finishes. If it does,
-        the waiting job acquires the lock and proceeds. If five seconds elapse and
-        the lock is still held, the `:reschedule` strategy takes over and the
-        duplicate is re-enqueued to try again later.
+        With `:reschedule` above, a second job for the same account does **not**
+        wait for the running job. It fails to acquire the lock right away, and the
+        `:reschedule` strategy re-enqueues it to run again later — repeating until
+        the account is free.
 
-        Contrast that with the fail-fast default:
+        Contrast that with the default fail-and-discard behavior:
       MD
 
       DocsUI::Code(<<~RUBY)
         class SendWelcomeEmailJob
           include Sidekiq::Job
 
-          # lock_timeout defaults to 0: if a duplicate is already locked,
-          # don't wait — log it and discard immediately.
-          sidekiq_options lock: :until_executed, on_conflict: :log
+          # No on_conflict set: if a duplicate is already locked, it is
+          # silently discarded. Add on_conflict: :log to have it logged.
+          sidekiq_options lock: :until_executed
 
           def perform(user_id)
             WelcomeMailer.greet(user_id).deliver_now
@@ -147,10 +161,12 @@ class Views::Docs::Pages::TtlAndTimeouts < DocsUI::Page
       RUBY
 
       md <<~'MD'
-        Here `lock_timeout` is `0`, so a second `perform_async` for the same user
-        does not wait — it immediately triggers `:log` and the duplicate is
-        discarded. That is precisely the behavior you want when the goal is to
-        collapse duplicate enqueues.
+        Here a second `perform_async` for the same user fails acquisition
+        immediately and — with no `on_conflict` configured — the duplicate is
+        **silently dropped** (the default strategy is a no-op; nothing is logged).
+        Add `on_conflict: :log` if you want the discard recorded. Either way, no
+        waiting happens: that is exactly what you want when the goal is to collapse
+        duplicate enqueues.
       MD
     end
   end
@@ -158,29 +174,28 @@ class Views::Docs::Pages::TtlAndTimeouts < DocsUI::Page
   def they_are_independent
     DocsUI::Section("They are independent") do
       md <<~'MD'
-        `lock_ttl` and `lock_timeout` do not affect each other. You can set
-        either, both, or neither, and each keeps its own meaning:
+        `lock_ttl` and `lock_timeout` do not affect each other. They keep their
+        own meanings — but only `lock_ttl` has runtime effect in v9:
 
-        | Setting | Answers | Default | Measured from |
-        |---------|---------|---------|---------------|
-        | `lock_ttl` | How long does the lock live? | `nil` (no expiry) | Lock **creation** (enqueue for client locks) |
-        | `lock_timeout` | How long do I wait to acquire it? | `0` (don't wait) | The acquisition attempt |
+        | Setting | Answers | Default | Effect in v9 |
+        |---------|---------|---------|--------------|
+        | `lock_ttl` | How long does the lock live? | `nil` (no expiry) | **Real** — Redis expires the lock this long after **creation** (enqueue for client locks) |
+        | `lock_timeout` | How long do I wait to acquire it? | `0` | **Inert** — acquisition is non-blocking; it never waits |
 
-        A job can have a long-lived lock that you refuse to wait for
-        (`lock_ttl: 86_400, lock_timeout: 0`), a short lock you'll wait patiently
-        for (`lock_ttl: 60, lock_timeout: 30`), or any other combination. Pick
-        each value from the question it answers, not from the other.
+        The takeaway: reach for `lock_ttl` to bound how long a lock lives, and
+        rely on the **conflict strategy** — not `lock_timeout` — to decide what
+        happens when a lock is contended.
       MD
 
       DocsUI::Code(<<~RUBY)
         class ReportBuilderJob
           include Sidekiq::Job
 
-          # Lock survives at most 10 minutes as a crash safety net (ttl),
-          # and callers wait up to 30 seconds to acquire it (timeout).
+          # Lock survives at most 10 minutes as a crash safety net (ttl).
+          # Contention is handled by :reschedule, not by waiting — a duplicate
+          # fails acquisition immediately and is re-enqueued to try again.
           sidekiq_options lock: :until_and_while_executing,
                           lock_ttl: 600,
-                          lock_timeout: 30,
                           on_conflict: :reschedule
 
           def perform(report_id)
@@ -194,8 +209,8 @@ class Views::Docs::Pages::TtlAndTimeouts < DocsUI::Page
 
         - **[One per period](/docs/one-per-period)** — `:until_expired` with a
           `lock_ttl` sized to the window.
-        - **[Bounded concurrency](/docs/bounded-concurrency)** — `lock_timeout`
-          controlling how long callers wait for a contended slot.
+        - **[Bounded concurrency](/docs/bounded-concurrency)** — using a lock and
+          a conflict strategy (not a waiting timeout) to serialize contended work.
       MD
     end
   end

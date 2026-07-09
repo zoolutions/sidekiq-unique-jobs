@@ -25,12 +25,13 @@ class Views::Docs::Pages::ConflictResolution < DocsUI::Page
         conflict strategy decides what happens to the copy that arrives while
         it's held.
 
-        By default the duplicate is simply **logged and discarded** — the second
-        `perform_async` returns without enqueuing anything. That's the right
-        behavior most of the time: a double-clicked button or a webhook that
-        fires twice shouldn't produce two jobs. But sometimes you want the
-        duplicate to survive: retried later, replaced, or sent somewhere you can
-        inspect it. That's what the strategy chooses.
+        By default the duplicate is simply **silently discarded** — the second
+        `perform_async` returns without enqueuing anything, and nothing is
+        logged. That's the right behavior most of the time: a double-clicked
+        button or a webhook that fires twice shouldn't produce two jobs. If you
+        want the drop to be logged, set `on_conflict: :log`. And sometimes you
+        want the duplicate to survive: retried later, replaced, or sent
+        somewhere you can inspect it. That's what the strategy chooses.
       MD
 
       DocsUI::Callout(:note) do
@@ -42,12 +43,12 @@ class Views::Docs::Pages::ConflictResolution < DocsUI::Page
   def the_five_strategies
     DocsUI::Section("The five strategies", description: "Set with on_conflict: on the worker.") do
       md <<~'MD'
-        There are five built-in strategies. `:log` is the effective default when
-        you don't set `on_conflict`.
+        There are five built-in strategies. When you don't set `on_conflict`, the
+        duplicate is silently discarded — `:log` is a strategy you opt into.
       MD
 
       DocsUI::PropTable([
-        [ "`:log`", "Symbol", "default", "Log the conflict and discard the duplicate. Nothing is enqueued." ],
+        [ "`:log`", "Symbol", "opt-in", "Log the conflict and discard the duplicate. Nothing is enqueued." ],
         [ "`:raise`", "Symbol", "—", "Raise an error so Sidekiq retries the job later." ],
         [ "`:reject`", "Symbol", "—", "Push the duplicate to the Dead set for later inspection." ],
         [ "`:replace`", "Symbol", "—", "Delete the existing job and lock, then enqueue the new one." ],
@@ -126,7 +127,8 @@ class Views::Docs::Pages::ConflictResolution < DocsUI::Page
       md <<~'MD'
         You can set a default strategy for every worker that doesn't specify its
         own. It's `nil` by default, which means "fall back to per-worker
-        configuration" — and with no per-worker value either, `:log` applies.
+        configuration" — and with no per-worker value either, the duplicate is
+        silently discarded (nothing is logged).
       MD
 
       DocsUI::Code(<<~RUBY)

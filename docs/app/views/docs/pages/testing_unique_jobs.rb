@@ -49,7 +49,7 @@ class Views::Docs::Pages::TestingUniqueJobs < DocsUI::Page
 
       DocsUI::Callout(:note) do
         plain "This flips the global "
-        a(href: "/docs/configuration") { "configuration" }
+        a(href: "/docs/configuration-reference") { "configuration" }
         plain ", so set it once for the whole suite rather than per-example."
       end
     end
@@ -109,7 +109,10 @@ class Views::Docs::Pages::TestingUniqueJobs < DocsUI::Page
       RUBY
 
       md <<~'MD'
-        Testing that the client lock blocks a duplicate enqueue:
+        Testing that the client lock blocks a duplicate enqueue. Because
+        `disable!` pushes to **real Redis**, `RefreshReportJob.jobs` (the fake
+        in-memory array) stays empty — assert on the real queue instead, and
+        clear it around the example:
       MD
 
       DocsUI::Code(<<~RUBY)
@@ -117,16 +120,20 @@ class Views::Docs::Pages::TestingUniqueJobs < DocsUI::Page
           before do
             SidekiqUniqueJobs.config.enabled = true
             SidekiqUniqueJobs.redis(&:flushdb)
+            Sidekiq::Queue.new("default").clear
             Sidekiq::Testing.disable!
           end
 
-          after { SidekiqUniqueJobs.config.enabled = false }
+          after do
+            Sidekiq::Queue.new("default").clear
+            SidekiqUniqueJobs.config.enabled = false
+          end
 
           it "enqueues only one job per report" do
             described_class.perform_async(42)
             described_class.perform_async(42)
 
-            expect(RefreshReportJob.jobs.size).to eq(1)
+            expect(Sidekiq::Queue.new("default").size).to eq(1)
           end
         end
       RUBY
@@ -173,7 +180,12 @@ class Views::Docs::Pages::TestingUniqueJobs < DocsUI::Page
 
       DocsUI::Code(<<~RUBY)
         RSpec.describe RefreshReportJob do
-          before { SidekiqUniqueJobs.redis(&:flushdb) }
+          before do
+            SidekiqUniqueJobs.redis(&:flushdb)
+            Sidekiq::Queue.new("default").clear
+          end
+
+          after { Sidekiq::Queue.new("default").clear }
 
           it "enforces uniqueness only inside the block" do
             SidekiqUniqueJobs.use_config(enabled: true) do
@@ -182,7 +194,8 @@ class Views::Docs::Pages::TestingUniqueJobs < DocsUI::Page
               described_class.perform_async(42)
               described_class.perform_async(42)
 
-              expect(RefreshReportJob.jobs.size).to eq(1)
+              # disable! pushes to real Redis, so assert on the real queue.
+              expect(Sidekiq::Queue.new("default").size).to eq(1)
             end
             # enabled is back to whatever it was before the block.
           end

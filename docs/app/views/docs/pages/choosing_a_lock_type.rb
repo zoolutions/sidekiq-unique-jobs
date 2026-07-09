@@ -115,7 +115,7 @@ class Views::Docs::Pages::ChoosingALockType < DocsUI::Page
         **Tradeoff:** because the lock releases by expiry rather than by code, the
         `after_unlock` callback never fires for this lock type. The TTL is
         measured from when the lock is *created* (at enqueue), not from when the
-        job finishes — see [TTL vs timeout](/docs/lock-ttl-and-timeout).
+        job finishes — see [TTL and timeouts](/docs/ttl-and-timeouts).
       MD
 
       DocsUI::Code(<<~RUBY)
