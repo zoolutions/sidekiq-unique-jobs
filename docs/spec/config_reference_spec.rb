@@ -30,11 +30,10 @@ RSpec.describe "Configuration reference drift", type: :model do
 
   it "documents (or allowlists) every real configuration member" do
     undocumented = real_members - documented - internal
-    expect(undocumented).to be_empty, <<~MSG
-      New SidekiqUniqueJobs::Config members are neither documented nor allowlisted: #{undocumented.inspect}
-      Add each to ConfigReference::GROUPS (to document it on the reference page)
-      or to ConfigReference::INTERNAL_ONLY (to mark it deliberately internal).
-    MSG
+    expect(undocumented).to be_empty,
+                            "New SidekiqUniqueJobs::Config members are neither documented nor allowlisted: " \
+                            "#{undocumented.inspect}. Add each to ConfigReference::GROUPS (to document it) " \
+                            "or ConfigReference::INTERNAL_ONLY (to mark it internal)."
   end
 
   it "has no overlap between documented and internal lists" do

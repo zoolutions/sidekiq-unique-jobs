@@ -23,6 +23,9 @@
 
 /public/assets
 
+# JS deps are reproducible via `bun install` (Dockerfile + docs-ci both run it).
+/node_modules
+
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
