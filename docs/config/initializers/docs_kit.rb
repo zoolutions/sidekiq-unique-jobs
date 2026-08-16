@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# docs-kit synced: v1.0.8
+
 # docs-kit configuration — everything that makes this site look like
 # "sidekiq-unique-jobs" rather than any other docs site. The shared chrome
 # (Shell/Sidebar/ThemeSwitcher/Code/Page) comes from the gem; only this config
@@ -33,7 +35,7 @@ Rails.application.config.to_prepare do
 
     # Repo + rubygems links in the topbar, rendered with the shipped brand marks.
     c.topbar_links = [
-      { href: "https://github.com/mhenrixon/sidekiq-unique-jobs", label: "GitHub", icon: :github },
+      { href: "https://github.com/zoolutions/sidekiq-unique-jobs", label: "GitHub", icon: :github },
       { href: "https://rubygems.org/gems/sidekiq-unique-jobs", label: "RubyGems", icon: :rubygems }
     ]
 
@@ -68,7 +70,7 @@ Rails.application.config.to_prepare do
     c.landing.install = { code: 'gem "sidekiq-unique-jobs", "~> 9.0"', filename: "Gemfile", lexer: :ruby }
     c.landing.ctas = [
       { label: "Get started", href: "/docs/overview", style: :primary },
-      { label: "GitHub", href: "https://github.com/mhenrixon/sidekiq-unique-jobs", style: :ghost, icon: :github }
+      { label: "GitHub", href: "https://github.com/zoolutions/sidekiq-unique-jobs", style: :ghost, icon: :github }
     ]
     c.landing.features = [
       { icon: "lock", title: "Five lock types",
