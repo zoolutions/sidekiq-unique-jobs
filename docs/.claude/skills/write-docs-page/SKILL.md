@@ -5,7 +5,7 @@ description: "Write, add, or update a documentation page in this docs-kit site. 
 
 # Write a docs page
 
-This is a [docs-kit](https://github.com/mhenrixon/docs-kit) site (Docs).
+This is a [docs-kit](https://github.com/zoolutions/docs-kit) site (Docs).
 Every page is a `DocsUI::Page` subclass; the shell, sidebar, "On this page" TOC,
 search, and the `.md` twin all come free. Your job is to scaffold a page and
 write its `#content` — never hand-write HTML or daisyUI markup.

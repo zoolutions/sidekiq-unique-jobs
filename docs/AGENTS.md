@@ -8,7 +8,7 @@ reads it through the bundled `write-docs-page` skill. Edit freely — a
 <!-- BEGIN docs-kit -->
 ## Writing docs pages (docs-kit)
 
-Docs is a [docs-kit](https://github.com/mhenrixon/docs-kit) site: a
+Docs is a [docs-kit](https://github.com/zoolutions/docs-kit) site: a
 Phlex/daisyUI chrome where **every page is a `DocsUI::Page` subclass** and the
 sidebar, TOC, search, and Markdown twin come free. To document something, you
 scaffold a page, then write its `#content`. Never hand-write HTML or daisyUI
