@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.version     = SidekiqUniqueJobs::VERSION
   spec.authors     = ["Mikael Henriksson"]
   spec.email       = ["mikael@mhenrixon.com"]
-  spec.homepage    = "https://github.com/mhenrixon/sidekiq-unique-jobs"
+  spec.homepage    = "https://github.com/zoolutions/sidekiq-unique-jobs"
   spec.license     = "MIT"
   spec.summary     = <<~SUMMARY
     Sidekiq middleware that prevents duplicates jobs
@@ -23,10 +23,10 @@ Gem::Specification.new do |spec|
   raise "RubyGems 2.0 or newer is required to protect against public gem pushes." unless spec.respond_to?(:metadata)
 
   spec.metadata = {
-    "bug_tracker_uri" => "https://github.com/mhenrixon/sidekiq-unique-jobs/issues",
+    "bug_tracker_uri" => "https://github.com/zoolutions/sidekiq-unique-jobs/issues",
     "documentation_uri" => "https://sidekiq-unique-jobs.zoolutions.llc",
-    "source_code_uri" => "https://github.com/mhenrixon/sidekiq-unique-jobs/tree/v#{spec.version}",
-    "changelog_uri" => "https://github.com/mhenrixon/sidekiq-unique-jobs/blob/main/CHANGELOG.md",
+    "source_code_uri" => "https://github.com/zoolutions/sidekiq-unique-jobs/tree/v#{spec.version}",
+    "changelog_uri" => "https://github.com/zoolutions/sidekiq-unique-jobs/blob/main/CHANGELOG.md",
     "funding_uri" => "https://github.com/sponsors/mhenrixon",
     "rubygems_mfa_required" => "true",
   }
