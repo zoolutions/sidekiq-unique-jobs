@@ -9,8 +9,8 @@ permissions:
   packages: write
 jobs:
   deploy:
-    uses: mhenrixon/docs-kit/.github/workflows/deploy.yml@main
+    uses: zoolutions/docs-kit/.github/workflows/deploy.yml@main
     with:
-      image: mhenrixon/sidekiq-unique-jobs
+      image: zoolutions/sidekiq-unique-jobs
       service: sidekiq-unique-jobs
     secrets: inherit

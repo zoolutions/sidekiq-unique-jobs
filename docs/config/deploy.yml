@@ -2,7 +2,7 @@
 # service/image = the repo OWNER/REPO so the ghcr package auto-links to the
 # repo and GITHUB_TOKEN can push + pull it (no PAT). See docs-kit's README.
 service: sidekiq-unique-jobs
-image: mhenrixon/sidekiq-unique-jobs
+image: zoolutions/sidekiq-unique-jobs
 
 servers:
   web:

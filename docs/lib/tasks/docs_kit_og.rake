@@ -25,9 +25,9 @@ namespace :docs_kit do
     require "docs_kit/og_generator"
 
     sizes = {
-      "og.png" => [ 1200, 630 ],       # Open Graph / twitter summary_large_image
-      "twitter.png" => [ 1024, 512 ],  # Twitter summary card
-      "square.png" => [ 600, 600 ]     # square fallback (some chat clients)
+      "og.png" => [1200, 630],       # Open Graph / twitter summary_large_image
+      "twitter.png" => [1024, 512],  # Twitter summary card
+      "square.png" => [600, 600]     # square fallback (some chat clients)
     }
     out_dir = Rails.root.join("app/assets/images/og")
 
