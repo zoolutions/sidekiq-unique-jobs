@@ -22,7 +22,7 @@ gem "stimulus-rails"
 gem "turbo-rails"
 
 # Views
-gem "daisyui", github: "mhenrixon/daisyui", require: "daisy_ui"
+gem "daisyui", github: "zoolutions/daisyui", require: "daisy_ui"
 gem "phlex-rails"
 gem "rails_icons", "~> 1.1"
 
