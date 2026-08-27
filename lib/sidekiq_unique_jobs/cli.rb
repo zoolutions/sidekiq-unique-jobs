@@ -10,11 +10,10 @@ module SidekiqUniqueJobs
   #
   class Cli < Thor
     # :nodoc:
-    # rubocop:disable Style/OptionalBooleanParameter
+    # rubocop:disable-next Style/OptionalBooleanParameter
     def self.banner(command, _namespace = nil, _subcommand = false) # rubocop:disable Style/OptionalBooleanParameter
       "jobs #{@package_name} #{command.usage}"
     end
-    # rubocop:enable Style/OptionalBooleanParameter
 
     desc "list PATTERN", "list all unique digests and their expiry time"
     option :count, aliases: :c, type: :numeric, default: 1000, desc: "The max number of digests to return"

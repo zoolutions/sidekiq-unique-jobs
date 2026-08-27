@@ -8,8 +8,8 @@
 # worker class removed it won't work.
 #
 # The following specs cover this functionality:
-#   - https://github.com/mhenrixon/sidekiq-unique-jobs/blob/master/spec/lib/sidekiq_unique_jobs/client/middleware_spec.rb
-#   - https://github.com/mhenrixon/sidekiq-unique-jobs/blob/master/spec/lib/sidekiq_unique_jobs/unique_args_spec.rb
+#   - https://github.com/zoolutions/sidekiq-unique-jobs/blob/master/spec/lib/sidekiq_unique_jobs/client/middleware_spec.rb
+#   - https://github.com/zoolutions/sidekiq-unique-jobs/blob/master/spec/lib/sidekiq_unique_jobs/unique_args_spec.rb
 class UniqueAcrossWorkersJob
   include Sidekiq::Worker
 

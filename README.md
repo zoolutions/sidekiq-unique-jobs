@@ -2,7 +2,7 @@
 
 Prevents duplicate Sidekiq jobs. Uses Redis locks to ensure only one job with the same arguments runs at a time.
 
-[![Build Status](https://github.com/mhenrixon/sidekiq-unique-jobs/actions/workflows/rspec.yml/badge.svg?branch=main)](https://github.com/mhenrixon/sidekiq-unique-jobs/actions)
+[![Build Status](https://github.com/zoolutions/sidekiq-unique-jobs/actions/workflows/rspec.yml/badge.svg?branch=main)](https://github.com/zoolutions/sidekiq-unique-jobs/actions)
 
 📚 **[Full documentation →](https://sidekiq-unique-jobs.zoolutions.llc)** — concepts, use-case guides, and reference.
 
@@ -191,7 +191,7 @@ Key changes:
 - **Redis keys**: 2 per lock (down from 13). Only `digest:LOCKED` hash and `uniquejobs:digests` sorted set.
 - **Sidekiq 8+ only**: Dropped Sidekiq 7 support.
 - **Ruby 3.2+ only**: Dropped older Ruby support.
-- **Changelog removed**: Use the [reflection system](https://github.com/mhenrixon/sidekiq-unique-jobs#reflections) for lock event observability.
+- **Changelog removed**: Use the [reflection system](https://github.com/zoolutions/sidekiq-unique-jobs#reflections) for lock event observability.
 - **Expiring locks unified**: No separate `expiring_digests` sorted set. TTL-based locks use the same `digests` ZSET with expiry time as score.
 
 ## Reflections

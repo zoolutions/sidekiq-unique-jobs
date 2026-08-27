@@ -77,8 +77,8 @@ RSpec.describe SidekiqUniqueJobs::OnConflict::Replace do
     end
 
     context "when job is retried" do
-      let(:jid)  { "abcdefab" }
-      let(:job)  { dump_json(item) }
+      let(:jid) { "abcdefab" }
+      let(:job) { dump_json(item) }
       let(:item) do
         {
           "class" => "MyUniqueJob",
