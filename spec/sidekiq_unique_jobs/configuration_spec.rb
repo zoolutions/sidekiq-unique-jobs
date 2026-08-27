@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable RSpec/SpecFilePathFormat
+# rubocop:disable-next RSpec/SpecFilePathFormat
 RSpec.describe SidekiqUniqueJobs do
   describe "define custom lock strategies" do
     subject(:middleware_call) do
@@ -19,11 +19,10 @@ RSpec.describe SidekiqUniqueJobs do
 
     let(:custom_lock) do
       Class.new(SidekiqUniqueJobs::Lock::BaseLock) do
-        # rubocop:disable Naming/PredicateMethod
+        # rubocop:disable-next Naming/PredicateMethod
         def lock
           true
         end
-        # rubocop:enable Naming/PredicateMethod
       end
     end
 
@@ -67,4 +66,3 @@ RSpec.describe SidekiqUniqueJobs do
     end
   end
 end
-# rubocop:enable RSpec/SpecFilePathFormat

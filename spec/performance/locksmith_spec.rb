@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe SidekiqUniqueJobs::Locksmith, :perf do
-  let(:locksmith_one)   { described_class.new(item_one) }
-  let(:locksmith_two)   { described_class.new(item_two) }
+  let(:locksmith_one) { described_class.new(item_one) }
+  let(:locksmith_two) { described_class.new(item_two) }
 
   let(:jid_one)      { "maaaahjid" }
   let(:jid_two)      { "jidmayhem" }
