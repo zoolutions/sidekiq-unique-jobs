@@ -9,7 +9,7 @@ class MyJob
                   # The server then goes on to creating a runtime lock for the job to prevent
                   # simultaneous jobs from being executed. As soon as the server starts
                   # processing a job, the client can push the same job to the queue.
-                  # https://github.com/mhenrixon/sidekiq-unique-jobs#until-and-while-executing
+                  # https://github.com/zoolutions/sidekiq-unique-jobs#until-and-while-executing
                   lock: :until_and_while_executing,
                   # search in logs SidekiqUniqueJobs keyword to find duplicates
                   log_duplicate_payload: true

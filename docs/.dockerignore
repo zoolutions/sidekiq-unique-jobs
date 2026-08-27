@@ -40,6 +40,7 @@
 
 # CI / deploy / Docker meta — not part of the runtime image.
 /.github/
+/.dash/
 /.kamal/
 /Dockerfile*
 /.dockerignore

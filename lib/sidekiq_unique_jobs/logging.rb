@@ -224,7 +224,7 @@ module SidekiqUniqueJobs
 
     def fake_logger_context(_context)
       logger.warn "Don't know how to setup the logging context. Please open a feature request: " \
-                  "https://github.com/mhenrixon/sidekiq-unique-jobs/issues/new?template=feature_request.md"
+                  "https://github.com/zoolutions/sidekiq-unique-jobs/issues/new?template=feature_request.md"
 
       yield
     end

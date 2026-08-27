@@ -67,7 +67,7 @@ Download the `.sha256` or `.sha512` file from the GitHub release and verify:
 
 ```bash
 # Download release assets
-gh release download vX.Y.Z --repo mhenrixon/sidekiq-unique-jobs
+gh release download vX.Y.Z --repo zoolutions/sidekiq-unique-jobs
 
 # Verify checksums
 sha256sum -c sidekiq-unique-jobs-X.Y.Z.gem.sha256
@@ -79,7 +79,7 @@ sha512sum -c sidekiq-unique-jobs-X.Y.Z.gem.sha512
 ```bash
 gem exec sigstore-cli verify-bundle \
   --bundle sidekiq-unique-jobs-X.Y.Z.gem.sigstore.json \
-  --certificate-identity "https://github.com/mhenrixon/sidekiq-unique-jobs/.github/workflows/release.yml@refs/tags/vX.Y.Z" \
+  --certificate-identity "https://github.com/zoolutions/sidekiq-unique-jobs/.github/workflows/release.yml@refs/tags/vX.Y.Z" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   sidekiq-unique-jobs-X.Y.Z.gem
 ```
