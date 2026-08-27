@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 # docs-kit shared docs chrome + its runtime deps
-gem "docs-kit", "~> 1.0.8"
+gem "docs-kit", "~> 1.1", ">= 1.1.1"
 gem "daisyui", require: "daisy_ui"
 gem "phlex-rails"
 gem "rails_icons", "~> 1.1"
