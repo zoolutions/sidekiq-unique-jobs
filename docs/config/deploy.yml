@@ -7,7 +7,7 @@ image: zoolutions/sidekiq-unique-jobs
 
 # dash 4 renamed the on-host proxy (kamal-proxy → dash-proxy) and migrates a
 # host in place; an older CLI must not deploy this config.
-minimum_version: 4.0.0
+minimum_version: 4.0.7
 
 # A stateless docs site never rolls back far — keep the host tidy.
 retain_containers: 2
