@@ -207,6 +207,30 @@ SidekiqUniqueJobs.reflect do |on|
 end
 ```
 
+## Sidekiq Pro and Super Fetch
+ * When using sidekiq pro with the super fetch feature you may see jobs "dissappear" after deployments and or scale
+   events in your environment, this is particularly noticeable when using Batches, they will appear to be in a "stuck"
+   state.
+ * A common cause of this is that the combination of `lock:` configuration (usually with `:until_and_while_executing`
+   combined with a longish `:lock_ttl`). When super fetch retrieves the job and tries to reenqueue the lock still exists
+   and your job gets dropped silently (unless you have `:raise` `:on_conflict`).
+ * Use a hook similar to the following to delete the locks and allow super fetch to complete recovery.
+```ruby
+config.super_fetch! do |jobstr, _pill|
+  job = JSON.parse(jobstr)
+  if job["lock_digest"]
+    begin
+      SidekiqUniqueJobs::Locksmith.new(job).unlock
+
+      puts "Job [#{job["jid"]}] unlocked by superfetch"
+    rescue => error
+      puts error
+    end
+  end
+  puts "Job [#{job["jid"]}] recovered by superfetch"
+end
+```
+
 ## Contributing
 
 1. Fork it
