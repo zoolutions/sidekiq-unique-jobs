@@ -66,7 +66,7 @@ begin
       SidekiqUniqueJobs::Web,
       name: "unique_jobs",
       tab: ["Locks"],
-      index: %w[locks/],
+      index: %w[locks],
     )
   end
 rescue NameError, LoadError => ex
