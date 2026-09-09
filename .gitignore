@@ -5,6 +5,7 @@
 .idea/
 .rspec_status
 .ruby-version
+dump.rdb
 /.byebug_history
 /.yardoc/
 /doc/
