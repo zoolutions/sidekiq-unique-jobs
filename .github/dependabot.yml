@@ -4,3 +4,25 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "bundler"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      bundler-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "bundler"
+    directory: "/myapp"
+    schedule:
+      interval: "weekly"
+    groups:
+      myapp-bundler-dependencies:
+        patterns:
+          - "*"
