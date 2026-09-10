@@ -97,9 +97,8 @@ Lock implementations inherit from `SidekiqUniqueJobs::Lock::BaseLock` (lib/sidek
 - Template system with shared functions in `lua/shared/`
 
 **Orphan Cleanup:**
-- `SidekiqUniqueJobs::Orphans::Manager` - Coordinates reaper lifecycle
-- `SidekiqUniqueJobs::Orphans::RubyReaper` - Ruby-based cleanup (default)
-- `SidekiqUniqueJobs::Orphans::LuaReaper` - Lua-based cleanup (faster but locks Redis)
+- `SidekiqUniqueJobs::Orphans::Reaper` - Ruby-based orphan cleanup (the only reaper in v9)
+- `SidekiqUniqueJobs::Server` - Starts the reaper timer and resurrector on Sidekiq boot
 - Reapers run periodically to clean up stale locks from crashed processes
 
 ### Configuration System
@@ -112,7 +111,7 @@ Global configuration via `SidekiqUniqueJobs.configure` block:
 Per-worker configuration via `sidekiq_options`:
 - `lock` - Lock type (required)
 - `on_conflict` - Conflict strategy (can differ for client/server)
-- `lock_timeout` - How long to wait for lock acquisition
+- `lock_timeout` - Retained for compatibility; v9 never blocks on lock acquisition
 - `lock_ttl` - Lock expiration time
 - `lock_args_method` - Custom method/proc to filter uniqueness args
 - `unique_across_queues` - Ignore queue in digest calculation
