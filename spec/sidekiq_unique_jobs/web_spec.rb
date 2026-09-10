@@ -36,6 +36,18 @@ RSpec.describe SidekiqUniqueJobs::Web do
   let(:lock_info)  { { "type" => "until_executed" } }
   let(:digests)    { SidekiqUniqueJobs::Digests.new }
 
+  it "registers the locks tab without a trailing slash" do
+    expect(Sidekiq::Web.tabs.fetch("Locks")).to eq("locks")
+  end
+
+  it "renders the locks navigation without a trailing slash" do
+    get "/"
+
+    expect(last_response).to be_ok
+    expect(last_response.body).to include('href="/locks"')
+    expect(last_response.body).not_to include('href="/locks/"')
+  end
+
   it "can display locks" do
     lock_one.lock(jid_one, lock_info)
     lock_two.lock(jid_two, lock_info)
