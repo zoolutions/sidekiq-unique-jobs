@@ -72,31 +72,24 @@ class Views::Docs::Pages::OrphanedLocksAndRecovery < DocsUI::Page
   def configuring_the_reaper
     DocsUI::Section("Choosing a reaper") do
       md <<~'MD'
-        `config.reaper` picks which implementation runs. There are two, plus an
-        off switch:
+        `config.reaper` turns orphan cleanup on or off:
 
-        - **`:ruby`** (default) — does the scanning in Ruby. It's the safe choice:
-          it works in batches and can never hold Redis long enough to block other
-          clients. Use this unless you have a specific reason not to.
-        - **`:lua`** — does the scanning inside a single Lua script. It's faster,
-          but Lua runs to completion with Redis effectively single-threaded, so a
-          large scan briefly blocks every other Redis command.
-        - **`:none`** or **`false`** — disables the reaper entirely. Only sensible
-          if every lock you use carries a `lock_ttl`, so orphans expire on their own.
+        - **`:ruby`** / **`true`** (default) — scans in Ruby, in batches, without
+          holding Redis for long stretches.
+        - **`:none`** / **`false`** — disables the reaper. Only sensible if every
+          lock you use carries a `lock_ttl`, so orphans expire on their own.
+        - **`:lua`** — removed in v9. Accepted for compatibility but ignored; a
+          deprecation warning is emitted and the Ruby reaper runs instead.
       MD
 
       DocsUI::Code(<<~RUBY)
         SidekiqUniqueJobs.configure do |config|
-          config.reaper          = :ruby # :ruby (default), :lua, or :none / false
+          config.reaper          = :ruby # :ruby / true, or :none / false
           config.reaper_count    = 1000  # max locks reaped per cycle
           config.reaper_interval = 600   # seconds between runs
           config.reaper_timeout  = 10    # max seconds a single run may take
         end
       RUBY
-
-      DocsUI::Callout(:warning) do
-        plain "With the :lua reaper, keep reaper_count low (1000 or less). The scan runs as one Lua script and blocks Redis while it works — a large count can stall every other client for the duration of the sweep. The :ruby reaper has no such limit."
-      end
     end
   end
 
@@ -107,12 +100,10 @@ class Views::Docs::Pages::OrphanedLocksAndRecovery < DocsUI::Page
       MD
 
       DocsUI::PropTable([
-        [ "reaper", "Symbol / false", ":ruby", "Which reaper runs: :ruby (safe, cannot block Redis), :lua (faster, briefly blocks Redis), or :none / false to disable." ],
+        [ "reaper", "Symbol / false", ":ruby", "Orphan cleanup: :ruby/true (default), or :none/false to disable. :lua is ignored (deprecated)." ],
         [ "reaper_count", "Integer", "1000", "Maximum number of orphaned locks removed in a single cycle." ],
         [ "reaper_interval", "Integer", "600", "Seconds to wait between reaper runs." ],
-        [ "reaper_timeout", "Integer", "10", "Maximum seconds a single reaper run is allowed to take before it stops." ],
-        [ "reaper_resurrector_enabled", "Boolean", "false", "Watch the reaper thread and restart it if it dies." ],
-        [ "reaper_resurrector_interval", "Integer", "3600", "Seconds between resurrector checks on the reaper thread." ]
+        [ "reaper_timeout", "Integer", "10", "Maximum seconds a single reaper run is allowed to take before it stops." ]
       ])
     end
   end
@@ -120,22 +111,12 @@ class Views::Docs::Pages::OrphanedLocksAndRecovery < DocsUI::Page
   def the_resurrector
     DocsUI::Section("The resurrector") do
       md <<~'MD'
-        The reaper is a long-lived thread, and threads can die — an unhandled
-        error deep in a scan, for instance. If the reaper thread dies quietly,
-        orphaned locks would pile up unnoticed.
-
-        The **resurrector** guards against that. It's a second, lightweight thread
-        that periodically checks whether the reaper is still alive and restarts it
-        if it isn't. It's **off by default**; turn it on if you want the reaper to
-        be self-healing.
+        Only one Sidekiq process holds the reaper mutex at a time. Every other
+        process runs a lightweight **resurrector** that watches that mutex and
+        takes over if the holder dies (for example after an OOM kill). This is
+        always on when the reaper itself is enabled — you do not need a separate
+        config flag.
       MD
-
-      DocsUI::Code(<<~RUBY)
-        SidekiqUniqueJobs.configure do |config|
-          config.reaper_resurrector_enabled  = true # off by default
-          config.reaper_resurrector_interval = 3600 # seconds between checks
-        end
-      RUBY
     end
   end
 

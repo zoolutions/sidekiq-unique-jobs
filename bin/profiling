@@ -15,19 +15,10 @@ SidekiqUniqueJobs.configure do |config|
   config.reaper_count    = 10_000
 end
 
-TASK = SidekiqUniqueJobs::TimerTask.new(SidekiqUniqueJobs::Orphans::Manager.timer_task_options) do
-  SidekiqUniqueJobs::Orphans::Manager.with_logging_context do
-    SidekiqUniqueJobs::Orphans::Manager.redis do |_conn|
-      SidekiqUniqueJobs::Orphans::Manager.refresh_reaper_mutex
-      sleep(1)
-    end
-  end
-end
-
 counter = 0
 result  = RubyProf.profile do
   100.times do
-    SidekiqUniqueJobs::Orphans::Manager.start(TASK)
+    SidekiqUniqueJobs::Orphans::Reaper.call
   end
 
   while counter < 60

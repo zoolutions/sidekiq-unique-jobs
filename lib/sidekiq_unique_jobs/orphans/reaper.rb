@@ -49,11 +49,22 @@ module SidekiqUniqueJobs
       # Short-circuits per-digest on first match found.
       def find_orphans(conn)
         orphans = []
+        collect_orphans(conn, orphans, 0, max_score)
+
+        # Second pass: digests with a future score whose :LOCKED hash is already
+        # gone. Covers until_expired entries that lost their hash via PEXPIRE
+        # but still sit past the byscore window (e.g. legacy ms-based scores).
+        collect_expired_digests(conn, orphans) if orphans.size < @reaper_count
+
+        orphans
+      end
+
+      def collect_orphans(conn, orphans, min_score, max)
         page = 0
         per = @reaper_count * 2
 
         loop do
-          candidates = @digests.byscore(0, max_score, offset: page * per, count: per)
+          candidates = @digests.byscore(min_score, max, offset: page * per, count: per)
           break if candidates.empty?
 
           candidates.each do |digest|
@@ -69,8 +80,30 @@ module SidekiqUniqueJobs
 
           page += 1
         end
+      end
 
-        orphans
+      def collect_expired_digests(conn, orphans)
+        page = 0
+        per = @reaper_count * 2
+
+        loop do
+          # Exclusive min so we don't re-check the first pass window.
+          candidates = @digests.byscore("(#{max_score}", "+inf", offset: page * per, count: per)
+          break if candidates.empty?
+
+          candidates.each do |digest|
+            break if timeout?
+            next if locked?(conn, digest) # still within real TTL — leave it alone
+
+            orphans << digest
+            break if orphans.size >= @reaper_count
+          end
+
+          break if timeout?
+          break if orphans.size >= @reaper_count
+
+          page += 1
+        end
       end
 
       # Check if the digest has a matching job anywhere in Sidekiq.

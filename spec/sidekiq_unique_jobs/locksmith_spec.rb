@@ -148,6 +148,16 @@ RSpec.describe SidekiqUniqueJobs::Locksmith do
 
         expect(locksmith_one).to be_locked
       end
+
+      it "stores the digest score in seconds (not milliseconds)" do
+        freeze_time = Time.now
+        allow(SidekiqUniqueJobs).to receive(:now_f).and_return(freeze_time.to_f)
+
+        locksmith_one.lock
+
+        score = redis { |conn| conn.call("ZSCORE", SidekiqUniqueJobs::DIGESTS, digest) }
+        expect(score).to be_within(0.001).of(freeze_time.to_f + lock_ttl)
+      end
     end
 
     context "when lock_type is anything else than until_expired" do

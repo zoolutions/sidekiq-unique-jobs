@@ -77,6 +77,8 @@ module SidekiqUniqueJobs
           return
         end
 
+        warn_if_lua_reaper_configured
+
         return unless register_reaper_process
 
         interval = SidekiqUniqueJobs.config.reaper_interval
@@ -131,13 +133,27 @@ module SidekiqUniqueJobs
         false
       end
 
-      # Refresh TTL each cycle so the key doesn't expire between runs
+      # Refresh TTL each cycle so the key doesn't expire between runs.
+      # Only refresh when we still own the mutex — a plain SET would overwrite
+      # a successor that registered after our TTL lapsed.
       def refresh_reaper_mutex
         SidekiqUniqueJobs.redis do |conn|
+          owner = conn.call("GET", UNIQUE_REAPER)
+          next unless owner == Process.pid.to_s
+
           conn.call("SET", UNIQUE_REAPER, Process.pid.to_s, "EX", mutex_ttl.to_s)
         end
       rescue StandardError
         # non-critical
+      end
+
+      def warn_if_lua_reaper_configured
+        return unless SidekiqUniqueJobs.config.reaper == :lua
+
+        SidekiqUniqueJobs::Deprecation.warn(
+          "`config.reaper = :lua` was removed in v9; the Ruby reaper always runs. " \
+          "Set `config.reaper = :ruby` (or `true`) to silence this warning.",
+        )
       end
 
       # Check if any process currently holds the reaper mutex

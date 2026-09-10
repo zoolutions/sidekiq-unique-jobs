@@ -95,12 +95,12 @@ sidekiq_options lock: :until_and_while_executing,
 ```ruby
 SidekiqUniqueJobs.configure do |config|
   config.lock_ttl          = nil     # Lock expiration in seconds (nil = no expiry)
-  config.lock_timeout      = 0       # How long to wait for a lock (0 = don't wait)
+  config.lock_timeout      = 0       # Kept for compatibility; v9 never blocks on lock acquisition
   config.lock_prefix       = "uniquejobs"
   config.on_conflict       = nil     # Global default conflict strategy
   config.lock_info         = false   # Store lock metadata (useful for debugging)
   config.enabled           = true    # Disable uniqueness globally
-  config.reaper            = :ruby   # Orphaned lock cleanup (:ruby, :lua, true, :none, false)
+  config.reaper            = :ruby   # Orphaned lock cleanup (:ruby/true, or :none/false to disable)
   config.reaper_count      = 1000    # Max locks to reap per cycle
   config.reaper_interval   = 600     # Seconds between reaper runs
   config.reaper_timeout    = 10      # Max seconds per reaper run
@@ -187,12 +187,17 @@ end
 
 v9 automatically migrates v8 lock data on first startup. No manual steps required.
 
+See [UPGRADING.md](UPGRADING.md) and the full guide:
+**[Upgrading to v9](https://sidekiq-unique-jobs.zoolutions.llc/docs/upgrading-to-v9)**.
+
 Key changes:
 - **Redis keys**: 2 per lock (down from 13). Only `digest:LOCKED` hash and `uniquejobs:digests` sorted set.
 - **Sidekiq 8+ only**: Dropped Sidekiq 7 support.
 - **Ruby 3.2+ only**: Dropped older Ruby support.
 - **Changelog removed**: Use the [reflection system](https://github.com/zoolutions/sidekiq-unique-jobs#reflections) for lock event observability.
 - **Expiring locks unified**: No separate `expiring_digests` sorted set. TTL-based locks use the same `digests` ZSET with expiry time as score.
+- **Non-blocking locks only**: `lock_timeout` no longer waits for a contended lock.
+- **Ruby reaper only**: `config.reaper = :lua` is ignored (deprecated); use `:ruby` / `:none`.
 
 ## Reflections
 

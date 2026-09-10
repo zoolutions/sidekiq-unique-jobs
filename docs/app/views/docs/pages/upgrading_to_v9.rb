@@ -12,6 +12,7 @@ class Views::Docs::Pages::UpgradingToV9 < DocsUI::Page
     what_the_migration_does
     two_keys_now
     changelog_removed
+    known_limitations
     checklist
   end
 
@@ -58,6 +59,12 @@ class Views::Docs::Pages::UpgradingToV9 < DocsUI::Page
         - **The Redis data model changed.** A lock is now two keys instead of up
           to thirteen. The upgrade rewrites your existing locks into the new
           shape automatically — you do not touch Redis yourself.
+        - **Lock acquisition is non-blocking.** `lock_timeout` no longer waits
+          for a contended lock. Use an `on_conflict` strategy such as
+          `:reschedule` when you want a duplicate to try again later.
+        - **The Lua reaper is gone.** `config.reaper = :lua` is accepted for
+          compatibility but ignored; the Ruby reaper always runs. Set `:ruby`
+          or `:none` / `false`.
 
         None of these require code changes in your workers. The two that can
         block a boot are the version floors: pin Ruby to 3.2+ and Sidekiq to
@@ -135,6 +142,27 @@ class Views::Docs::Pages::UpgradingToV9 < DocsUI::Page
     end
   end
 
+  def known_limitations
+    DocsUI::Section("Known limitations", description: "Intentional v9 behavior to be aware of.") do
+      md <<~'MD'
+        - **`UntilExecuting`**: if unlock fails on the server (another JID holds
+          the lock), the job still runs. Unlock failure is rare.
+        - **`UntilAndWhileExecuting`**: if the client-side unlock fails before the
+          runtime lock is taken, the job is skipped, Sidekiq marks it successful,
+          and `:unlock_failed` is reflected — nothing is raised.
+        - **ReliableFetch is optional.** Lock-lapse detection and lock-aware
+          acknowledgment only apply when you set
+          `config[:fetch_class] = SidekiqUniqueJobs::Fetch::Reliable`.
+        - **`:duplicate` reflection** remains registered for compatibility but is
+          not dispatched; prefer `:lock_failed`.
+        - **Early-alpha `:until_expired` digests** may have been written with
+          millisecond-based scores. The reaper sweeps those once their `:LOCKED`
+          hash has expired. See [UPGRADING.md](https://github.com/zoolutions/sidekiq-unique-jobs/blob/main/UPGRADING.md)
+          if you need a forced cleanup.
+      MD
+    end
+  end
+
   def checklist
     DocsUI::Section("Upgrade checklist") do
       md <<~'MD'
@@ -146,7 +174,9 @@ class Views::Docs::Pages::UpgradingToV9 < DocsUI::Page
            [Installation](/docs/installation) guide.
         4. **Replace any changelog-history usage** with the reflection system —
            see [Reflections](/docs/reflections).
-        5. **Deploy and boot.** The first v9 process migrates your v8 locks in
+        5. **Replace `lock_timeout`-based waiting** with an `on_conflict`
+           strategy if you depended on blocking acquisition.
+        6. **Deploy and boot.** The first v9 process migrates your v8 locks in
            place. No migration script, no manual Redis surgery.
       MD
 

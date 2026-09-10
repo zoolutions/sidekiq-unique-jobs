@@ -133,5 +133,36 @@ RSpec.describe SidekiqUniqueJobs::Orphans::Reaper do
       # Queue scanning is skipped — fail closed, preserve the lock
       expect(described_class.call).to eq(0)
     end
+
+    it "reaps future-scored digests whose LOCKED hash is already gone" do
+      digest = "uniquejobs:#{SecureRandom.hex(12)}"
+      # Simulate a legacy until_expired entry: score ~1000x too far in the future,
+      # LOCKED already expired via PEXPIRE.
+      future_score = (Time.now.to_f + 3_600_000).to_s
+
+      redis { |conn| conn.call("ZADD", digests_key, future_score, digest) }
+
+      expect(described_class.call).to eq(1)
+      redis do |conn|
+        expect(conn.call("ZSCORE", digests_key, digest)).to be_nil
+      end
+    end
+
+    it "preserves future-scored digests that still hold a LOCKED hash" do
+      digest = "uniquejobs:#{SecureRandom.hex(12)}"
+      jid = SecureRandom.hex(12)
+      future_score = (Time.now.to_f + 3_600).to_s
+
+      redis do |conn|
+        conn.call("ZADD", digests_key, future_score, digest)
+        conn.call("HSET", "#{digest}:LOCKED", jid, '{"type":"until_expired"}')
+      end
+
+      expect(described_class.call).to eq(0)
+      redis do |conn|
+        expect(conn.call("ZSCORE", digests_key, digest)).not_to be_nil
+        expect(conn.call("EXISTS", "#{digest}:LOCKED")).to eq(1)
+      end
+    end
   end
 end

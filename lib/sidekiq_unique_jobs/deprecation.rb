@@ -42,7 +42,7 @@ module SidekiqUniqueJobs
     def self.warn(msg)
       return if SidekiqUniqueJobs::Deprecation.muted?
 
-      warn "DEPRECATION WARNING: #{msg}"
+      Kernel.warn("DEPRECATION WARNING: #{msg}")
       nil
     end
 
@@ -57,7 +57,7 @@ module SidekiqUniqueJobs
       return if SidekiqUniqueJobs::Deprecation.muted?
 
       trace = "\n\nCALLED FROM:\n#{caller.join("\n")}"
-      warn(msg + trace)
+      Kernel.warn("DEPRECATION WARNING: #{msg}#{trace}")
 
       nil
     end

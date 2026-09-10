@@ -188,7 +188,7 @@ Commands and agents pin a model tier via frontmatter aliases: `sonnet` for CI/re
 
 3. **Lock expiration**: `lock_ttl` expires from when lock is created, not from when job finishes. For daily jobs, use `until_expired` with 1.day TTL.
 
-4. **Reaper configuration**: The Lua reaper is faster but can block Redis. Keep `reaper_count` low (≤1000) when using `:lua` reaper. Use `:ruby` reaper (default) for safety.
+4. **Reaper configuration**: v9 ships a Ruby reaper only. `config.reaper = :lua` is ignored (deprecation warning). Use `:ruby` (default) or `:none`/`false` to disable. Keep `reaper_count` reasonable for your Redis size.
 
 5. **Testing uniqueness**: Don't test the gem's uniqueness behavior in your app tests. Trust the gem's test suite. Disable uniqueness in your tests with `config.enabled = false`.
 

@@ -21,9 +21,13 @@ end
 
 redis.call("HSET", locked, job_id, metadata)
 
+-- current_time is epoch seconds (SidekiqUniqueJobs.now_f).
+-- pttl is milliseconds (LockConfig multiplies TTL seconds by 1000).
+-- Digests ZSET scores must stay in seconds so the reaper's byscore window
+-- (also seconds) can find expired until_expired entries.
 local score
 if lock_type == "until_expired" and pttl and pttl > 0 then
-  score = current_time + pttl
+  score = current_time + (pttl / 1000.0)
 else
   score = current_time
 end
