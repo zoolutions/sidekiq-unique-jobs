@@ -30,7 +30,7 @@ strip_lines_matching = [
   "^  AllCops:$",
   "^    SuggestExtensions: false$",
 ]
-on_empty = "rake: ok"
+on_empty = "rake: no output left after filtering (check the exit code)"
 
 [[tests.rake]]
 name = "style: clean run drops boilerplate, keeps the file count"
