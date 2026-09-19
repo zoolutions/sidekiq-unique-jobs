@@ -1,0 +1,31 @@
+CLAUDE.md
+  s_00cebc6e884e54::t_f38c5d59063890 1,3,5-6
+.claude/commands/plan.md
+  s_00cebc6e884e54::t_1c29f2a9c3b676 32
+.rtk/filters.toml
+  s_00cebc6e884e54::t_a2becd70de91fc 8-11
+  s_00cebc6e884e54::t_c22ae2551b9f0d 1-7,12-19,21-120
+  s_00cebc6e884e54::t_0bd0b3586a5fb4 20
+.claude/commands/github-review-comments.md
+  s_00cebc6e884e54::t_40ef57bb1e4e46 223
+  s_00cebc6e884e54::t_8592a0c69d2066 234
+  s_00cebc6e884e54::t_65ee46a7b14f72 104
+AGENTS.md
+  s_00cebc6e884e54::t_d3a57610eba84f 1-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "327aded2965b9668aa7f4f5c425a5bec514881b6",
+  "prompts": {},
+  "sessions": {
+    "s_00cebc6e884e54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a603fe4c-92ea-4e70-8126-5015d87e99f3",
+        "model": "unknown"
+      },
+      "human_author": "mhenrixon <mikael@mhenrixon.com>"
+    }
+  }
+}
