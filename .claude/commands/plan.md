@@ -29,7 +29,7 @@ Protect this session's context: delegate mechanical exploration to cheaper subag
 
 1. Fan out Explore agents (`model: haiku`) for file discovery and naming-convention sweeps; use `model: sonnet` agents when a subsystem needs to be read and summarized. Launch independent explorations in parallel.
 2. Read the load-bearing files yourself — the ones the design decision actually hinges on. Don't design from subagent summaries alone.
-3. Check `CLAUDE.md` for architecture notes, lock types, and common pitfalls — past decisions and gotchas live there.
+3. Check `AGENTS.md` for architecture notes, lock types, and common pitfalls — past decisions and gotchas live there.
 4. Review Lua scripts in `lib/sidekiq_unique_jobs/lua/` and lock implementations in `lib/sidekiq_unique_jobs/lock/` for relevant patterns.
 5. Check `git log` for recent related work; the design should extend it, not fight it.
 

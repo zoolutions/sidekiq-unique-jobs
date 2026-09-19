@@ -1,0 +1,120 @@
+# Project-local RTK filters (https://github.com/rtk-ai/rtk#custom-filters).
+#
+# The `rtk hook claude` PreToolUse hook rewrites a matching command to
+# `rtk <cmd>`; rtk runs it and drops the lines listed here before the agent
+# sees the output. Filters are line-based: they strip noise, never reformat.
+#
+# `match_command` is matched against the command with the first word reduced
+# to its basename. Project filters see the raw command text (the hook's
+# "bundle exec" stripping only covers rtk's own built-in subcommands), so a
+# filter that must cover both forms matches the optional prefix itself:
+# `^(?:bundle\s+exec\s+)?rake\b` hits `rake`, `bin/rake` and `bundle exec rake`.
+#
+# Trust is a SHA-256 of this file: after every edit run `rtk trust --yes`,
+# then `rtk verify` to run the inline tests.
+schema_version = 1
+
+[filters.rake]
+filter_stderr = true
+description = "bundle exec rake rubocop/style/reek/yard: drop the progress bar, the dead reek stub (reek isn't a dependency), and the RuboCop extension nag box; keep offenses, counts and pass/fail"
+match_command = "^(?:bundle\\s+exec\\s+)?rake\\b"
+strip_lines_matching = [
+  "^\\s*$",
+  "^Reek is currently unavailable$",
+  "^Should be running reek$",
+  "^Running RuboCop\\.\\.\\.$",
+  "^Progress: \\|.*$",
+  "^The following RuboCop extension libraries are installed but not loaded in config:$",
+  "^  \\* rubocop-\\S+$",
+  "^You can opt out of this message by adding the following to your config",
+  "^  AllCops:$",
+  "^    SuggestExtensions: false$",
+]
+on_empty = "rake: ok"
+
+[[tests.rake]]
+name = "style: clean run drops boilerplate, keeps the file count"
+input = """
+Reek is currently unavailable
+Should be running reek
+Running RuboCop...
+
+Progress: |===================================================================================================================================================================================================================================================|
+
+262 files inspected, no offenses detected
+
+The following RuboCop extension libraries are installed but not loaded in config:
+  * rubocop-capybara
+  * rubocop-factory_bot
+  * rubocop-rails
+  * rubocop-rspec_rails
+
+You can opt out of this message by adding the following to your config (see https://docs.rubocop.org/rubocop/plugins.html#plugin-suggestions for more options):
+  AllCops:
+    SuggestExtensions: false
+"""
+expected = """262 files inspected, no offenses detected"""
+
+[[tests.rake]]
+name = "rubocop: offenses, code context, failure line and final count survive; progress bar and nag box do not"
+input = """Reek is currently unavailable
+Running RuboCop...
+
+Progress: |
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:1:1: C: Style/Documentation: Missing top-level documentation comment for class Foo.
+class Foo
+^^^^^^^^^
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+class Foo
+^
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:2:1: C: [Correctable] Layout/IndentationWidth: Use 2 (not 0) spaces for indentation.
+def bar
+
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:2:5: C: Naming/PredicateMethod: Predicate method names should end with ?.
+def bar
+    ^^^
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:3:1: C: [Correctable] Layout/IndentationWidth: Use 2 (not 0) spaces for indentation.
+1==1
+
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:3:1: W: Lint/BinaryOperatorWithIdenticalOperands: Binary operator == has identical operands.
+1==1
+^^^^
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:3:2: C: [Correctable] Layout/SpaceAroundOperators: Surrounding space missing for operator ==.
+1==1
+ ^^
+Progress: |===================================================================================================================================================================================================================================================|
+RuboCop failed!
+
+263 files inspected, 7 offenses detected, 4 offenses autocorrectable
+
+The following RuboCop extension libraries are installed but not loaded in config:
+  * rubocop-capybara
+  * rubocop-factory_bot
+  * rubocop-rails
+  * rubocop-rspec_rails
+
+You can opt out of this message by adding the following to your config (see https://docs.rubocop.org/rubocop/plugins.html#plugin-suggestions for more options):
+  AllCops:
+    SuggestExtensions: false
+"""
+expected = """lib/sidekiq_unique_jobs/_tmp_offense_test.rb:1:1: C: Style/Documentation: Missing top-level documentation comment for class Foo.
+class Foo
+^^^^^^^^^
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+class Foo
+^
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:2:1: C: [Correctable] Layout/IndentationWidth: Use 2 (not 0) spaces for indentation.
+def bar
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:2:5: C: Naming/PredicateMethod: Predicate method names should end with ?.
+def bar
+    ^^^
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:3:1: C: [Correctable] Layout/IndentationWidth: Use 2 (not 0) spaces for indentation.
+1==1
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:3:1: W: Lint/BinaryOperatorWithIdenticalOperands: Binary operator == has identical operands.
+1==1
+^^^^
+lib/sidekiq_unique_jobs/_tmp_offense_test.rb:3:2: C: [Correctable] Layout/SpaceAroundOperators: Surrounding space missing for operator ==.
+1==1
+ ^^
+RuboCop failed!
+263 files inspected, 7 offenses detected, 4 offenses autocorrectable"""

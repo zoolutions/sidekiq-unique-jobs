@@ -101,7 +101,7 @@ For each unresolved comment, read the full body and categorise it:
 2. Check if the suggestion is technically correct for THIS codebase
 3. Check if it would break existing functionality
 4. Check if existing patterns/conventions contradict the suggestion
-5. Check CLAUDE.md rules -- project conventions override reviewer preferences
+5. Check AGENTS.md rules -- project conventions override reviewer preferences
 
 ---
 
@@ -220,7 +220,7 @@ When pushing back:
 
 - Use technical reasoning grounded in the actual codebase
 - Reference existing patterns if the suggestion contradicts them
-- Reference CLAUDE.md rules when applicable
+- Reference AGENTS.md rules when applicable
 - Explain what would break or what edge case the reviewer missed
 - If the suggestion is valid in principle but wrong for this context, say so
 
@@ -231,7 +231,7 @@ When pushing back:
 - Always read the actual code before evaluating a comment -- reviewers sometimes misread diffs
 - If a comment reveals a genuine bug you missed, fix it without defensiveness
 - If multiple comments suggest the same change, implement it once and reference the fix in all replies
-- Bot reviewers (CodeRabbit, etc.) sometimes suggest changes that conflict with project conventions -- verify against CLAUDE.md
+- Bot reviewers (CodeRabbit, etc.) sometimes suggest changes that conflict with project conventions -- verify against AGENTS.md
 - If a new round of review comments appears after your push (from re-review), report that to the user rather than entering an infinite loop
 
 Now begin by determining the PR number from `$ARGUMENTS` or the current branch.
