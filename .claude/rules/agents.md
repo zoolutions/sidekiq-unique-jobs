@@ -2,11 +2,13 @@
 
 ## Available Agents
 
-| Agent | Purpose | When to Use |
-|-------|---------|-------------|
-| Explore | Codebase exploration | Finding files, understanding patterns |
-| Plan | Implementation planning | Complex features, architectural decisions |
-| general-purpose | Multi-step tasks | Research, complex searches |
+| Agent | Model | Purpose | When to Use |
+|-------|-------|---------|-------------|
+| Explore | `model: haiku` | Codebase exploration | Finding files, understanding patterns |
+| Plan | `model: sonnet` | Implementation planning | Complex features, architectural decisions |
+| general-purpose | `model: sonnet` | Multi-step tasks | Research, complex searches |
+
+Every agent spawned names its `model:`; one that does not runs on `sonnet` (`CLAUDE_CODE_SUBAGENT_MODEL` in `.claude/settings.json`).
 
 ## Immediate Agent Usage
 
@@ -34,7 +36,7 @@ First explore, wait, then check Lua, wait, then review...
 
 ## When to Use Explore Agent
 
-Use the Explore agent (subagent_type=Explore) instead of direct Glob/Grep when:
+Use the Explore agent (subagent_type=Explore, `model: haiku`) instead of direct Glob/Grep when:
 - Open-ended codebase exploration
 - Searching for patterns across lock types, middleware, and Lua scripts
 - Answering questions about codebase structure
