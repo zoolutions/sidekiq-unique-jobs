@@ -1,0 +1,28 @@
+.claude/commands/lfg.md
+  s_4c516a1272d78b::t_d80439fb0cdb48 264
+  s_4c516a1272d78b::t_cff3b9e1f0e033 65
+  s_4c516a1272d78b::t_55fed2ef19df8a 206-211
+.claude/agents/fable-validator.md
+  s_4c516a1272d78b::t_5a57972615a444 24
+AGENTS.md
+  s_4c516a1272d78b::t_7e817c4cf4598d 189
+.claude/rules/agents.md
+  s_4c516a1272d78b::t_de6bc5337d347e 39
+  s_4c516a1272d78b::t_09949f9a01df63 5-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47430b5c41543086294fe2cc84998e49d6041836",
+  "prompts": {},
+  "sessions": {
+    "s_4c516a1272d78b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "023a6eca-0c0a-4c25-9a2a-55def612ac01",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "mhenrixon <mikael@mhenrixon.com>"
+    }
+  }
+}
