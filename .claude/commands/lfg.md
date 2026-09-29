@@ -205,7 +205,7 @@ Re-read the original requirements and verify:
 
 ## Phase 6.5: Fable validation
 
-Spawn the `fable-validator` agent (it is pinned to Fable) with the issue, the acceptance criteria from Phase 1 and the base branch. On **BLOCK**, fix every blocker (back to Phase 4 for code, with a failing test first), re-verify, and run the validator again. On **PASS WITH NOTES**, fix the risks you agree with and list the rest in the pull request under "Accepted risks". Put the validator's one-line verdict and its "Not verified" list in the pull request body. Do not open the pull request before a PASS or PASS WITH NOTES.
+Spawn the `fable-validator` agent (it is pinned to Fable) with the issue, the acceptance criteria from Phase 1 and the base branch. On **BLOCK**, fix every blocker (back to Phase 4 for code, with a failing test first), re-verify, and run the validator again. On **PASS WITH NOTES**, fix the risks you agree with (if those fixes change the diff, re-verify and run the validator again) and list the rest in the pull request under "Accepted risks". Put the validator's one-line verdict and its "Not verified" list in the pull request body. Do not open the pull request before a PASS or PASS WITH NOTES.
 
 ---
 
@@ -243,6 +243,12 @@ gh pr create --title "feat(scope): brief description" --body "$(cat <<'EOF'
 - Key change 2
 
 Closes #<issue_number>
+
+## Fable validation
+<the validator's one-line verdict, and its "Not verified" list>
+
+## Accepted risks
+<risks the validator raised that were not fixed, and why; or "None">
 
 ## Test plan
 - [ ] Scenario 1
