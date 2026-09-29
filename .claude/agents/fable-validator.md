@@ -21,7 +21,7 @@ The issue (number or text), the acceptance criteria, and the base branch (usuall
    - security: input reaching SQL, shell, file paths, HTML or deserialisation; secrets; authorisation on every new entry point;
    - tests that do not test what their name says, or pass for the wrong reason;
    - what the project's CLAUDE.md or AGENTS.md says a change must do (a changelog bullet, docs, a benchmark, a validator run) and whether it was done.
-   - this gem's contract: public API and `SidekiqUniqueJobs.config` options, lock digests and Redis keys/Lua scripts stored by deployed versions (upgrades run against live data), and the Sidekiq-version appraisals in `Appraisals`; see `.claude/commands/github-review-pr.md` and AGENTS.md.
+   - this gem's contract: public API and `SidekiqUniqueJobs.config` options, lock digests and Redis keys/Lua scripts stored by deployed versions (upgrades run against live data), and the Sidekiq-version appraisals in `Appraisals`; see the Verification Checklist in `.claude/commands/lfg.md` and AGENTS.md.
 4. Run what settles a question rather than reasoning about it, when it is cheap: a single spec file, a grep for other callers, `git log -S` for why a line exists. Do not run the whole suite unless the question needs it; say what you ran.
 
 ## What you answer
