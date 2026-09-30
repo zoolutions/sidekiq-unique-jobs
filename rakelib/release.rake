@@ -232,6 +232,10 @@ module ReleaseKit
   end
 end
 
+# `require "bundler/gem_tasks"` defines its own `release` (tag push + a local
+# `gem push`); Rake would merge this task into it and run both. Replace it.
+Rake::Task[:release].clear if Rake::Task.task_defined?(:release)
+
 desc "Release a new version (rake release[1.2.3], release[pre], release[1.2.3,force])"
 task :release, %i[version force] do |_t, args|
   ReleaseKit.fail!("usage: rake release[X.Y.Z] or rake release[X.Y.Z,force]") unless args[:version]
