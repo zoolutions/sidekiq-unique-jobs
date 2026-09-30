@@ -54,11 +54,19 @@ LAST_TAG=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n1)
 IFS=. read -r MAJOR MINOR PATCH _ <<< "$CURRENT"
 MAJOR=${MAJOR:-0}; MINOR=${MINOR:-0}; PATCH=${PATCH%%[^0-9]*}; PATCH=${PATCH:-0}
 
+# From a prerelease (9.0.0.alpha1), a bump finalises it when the prerelease
+# already belongs to that level: patch always gives 9.0.0; minor does when the
+# patch is 0; major when minor and patch are 0. Otherwise it moves on as usual.
+PRE=false; [[ "$CURRENT" =~ [a-zA-Z] ]] && PRE=true
+
 next_version() {
   case "$1" in
-    major) echo "$((MAJOR + 1)).0.0" ;;
-    minor) echo "${MAJOR}.$((MINOR + 1)).0" ;;
-    patch) echo "${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+    major)
+      if $PRE && [ "$MINOR" -eq 0 ] && [ "$PATCH" -eq 0 ]; then echo "${MAJOR}.0.0"; else echo "$((MAJOR + 1)).0.0"; fi ;;
+    minor)
+      if $PRE && [ "$PATCH" -eq 0 ]; then echo "${MAJOR}.${MINOR}.0"; else echo "${MAJOR}.$((MINOR + 1)).0"; fi ;;
+    patch)
+      if $PRE; then echo "${MAJOR}.${MINOR}.${PATCH}"; else echo "${MAJOR}.${MINOR}.$((PATCH + 1))"; fi ;;
   esac
 }
 
