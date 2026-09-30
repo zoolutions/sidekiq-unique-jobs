@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# Cut a release of this gem. Works out the next version, shows what is about to
+# ship, and hands off to `rake release[X.Y.Z]` (rakelib/release.rake), which
+# bumps version.rb + the tracked lockfile pins, commits, pushes main, and
+# publishes the GitHub Release that triggers the RubyGems publish (trusted
+# publishing — never `gem push` by hand).
+#
+#   bin/release            # patch bump for a bugfix  (1.3.1 -> 1.3.2)
+#   bin/release minor      # 1.3.1 -> 1.4.0
+#   bin/release major      # 1.3.1 -> 2.0.0
+#   bin/release 2.0.0.rc1  # explicit version (v-prefix optional; rc/beta/alpha = prerelease)
+#   bin/release list       # last releases + what each bump would give
+#   bin/release --dry-run  # (-n) show version + changes, publish nothing
+#   bin/release --force    # (-f) re-create an existing tag/release
+#
+# Part of the zoolutions release kit (canonical copy in docs-kit, see
+# RELEASE_KIT.md): byte-identical in every gem, never edited in place. Everything
+# project-specific comes from the *.gemspec; project-only gates are Rakefile hooks.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+BUMP="patch"
+DRY_RUN=false
+FORCE=false
+LIST=false
+EXPLICIT=""
+
+for arg in "$@"; do
+  case "$arg" in
+    major|minor|patch) BUMP="$arg" ;;
+    list|--list|-l) LIST=true ;;
+    v[0-9]*|[0-9]*.[0-9]*) EXPLICIT="${arg#v}" ;;
+    --dry-run|-n) DRY_RUN=true ;;
+    --force|-f) FORCE=true ;;
+    -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "unknown argument: $arg (try --help)" >&2; exit 1 ;;
+  esac
+done
+
+git fetch -q origin main --tags
+
+# The gemspec is the source of truth for the name and current version (it reads
+# version.rb, which rake release bumps); the newest v* tag should agree with it.
+read -r GEM CURRENT < <(ruby -e '
+  specs = Dir["*.gemspec"]
+  abort "expected exactly one *.gemspec, found #{specs.inspect}" unless specs.size == 1
+  spec = Gem::Specification.load(specs.first)
+  puts "#{spec.name} #{spec.version}"
+')
+[ -n "${CURRENT:-}" ] || { echo "could not read the gem name/version from the gemspec" >&2; exit 1; }
+LAST_TAG=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n1)
+
+IFS=. read -r MAJOR MINOR PATCH _ <<< "$CURRENT"
+MAJOR=${MAJOR:-0}; MINOR=${MINOR:-0}; PATCH=${PATCH%%[^0-9]*}; PATCH=${PATCH:-0}
+
+next_version() {
+  case "$1" in
+    major) echo "$((MAJOR + 1)).0.0" ;;
+    minor) echo "${MAJOR}.$((MINOR + 1)).0" ;;
+    patch) echo "${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+  esac
+}
+
+if $LIST; then
+  echo "$GEM current version: $CURRENT"
+  echo
+  echo "last releases:"
+  git for-each-ref --sort=-v:refname --count=5 \
+    --format='  %(refname:short)  %(creatordate:short)' 'refs/tags/v[0-9]*'
+  echo
+  echo "next version:"
+  printf '  %-6s v%s\n' patch "$(next_version patch)" minor "$(next_version minor)" major "$(next_version major)"
+  exit 0
+fi
+
+if [ -n "$EXPLICIT" ]; then
+  NEXT="$EXPLICIT"; HOW="explicit"
+else
+  NEXT=$(next_version "$BUMP"); HOW="$BUMP"
+fi
+TAG="v$NEXT"
+SHA=$(git rev-parse HEAD)
+REMOTE_SHA=$(git rev-parse origin/main)
+
+echo "gem:      $GEM"
+echo "current:  $CURRENT  (last tag: ${LAST_TAG:-none})"
+echo "release:  $TAG  ($HOW)"
+echo "target:   $(git branch --show-current) @ ${SHA:0:8}"
+echo
+echo "changes since ${LAST_TAG:-repository start}:"
+git log --oneline --no-decorate "${LAST_TAG:+$LAST_TAG..}HEAD" | sed 's/^/  /'
+echo
+
+if [ -n "$LAST_TAG" ] && [ "$LAST_TAG" != "v$CURRENT" ]; then
+  echo "warning: the gemspec says $CURRENT but the newest tag is $LAST_TAG" >&2
+fi
+
+# A gem in one of our tracked lockfiles that pins this gem below the new version
+# (e.g. docs-kit's `daisyui (>= 1.2, < 2)` before a daisyui 2.0) cannot take the
+# release; catch that up front rather than halfway through.
+BLOCKERS=$(git ls-files -z -- '*Gemfile.lock' '*.gemfile.lock' | xargs -0 ruby -e '
+  gem, version = ARGV.shift, Gem::Version.new(ARGV.shift)
+  ARGV.each do |lockfile|
+    owner = nil
+    File.foreach(lockfile) do |line|
+      owner = line[/\A    (\S+) \(/, 1] || owner
+      reqs = line[/\A      #{Regexp.escape(gem)} \((.+)\)/, 1] or next
+      next if Gem::Requirement.new(*reqs.split(", ")).satisfied_by?(version)
+      puts "  #{lockfile}: #{owner} requires #{gem} (#{reqs})"
+    end
+  end
+' "$GEM" "$NEXT")
+if [ -n "$BLOCKERS" ]; then
+  echo "cannot release $NEXT: these gems do not accept it yet (release them first, then re-lock):" >&2
+  echo "$BLOCKERS" >&2
+  $DRY_RUN || exit 1
+  echo
+fi
+
+if $DRY_RUN; then
+  echo "dry run — nothing bumped or published"
+  exit 0
+fi
+
+# rake release commits the bump and pushes origin main, so it must start from
+# a clean, up-to-date main — otherwise the push either fails or ships
+# whatever local commits happen to be sitting there.
+[ "$(git branch --show-current)" = "main" ] || { echo "run bin/release from main (on $(git branch --show-current))" >&2; exit 1; }
+[ -z "$(git status --porcelain)" ] || { echo "working tree has uncommitted changes; commit or stash first" >&2; exit 1; }
+[ "$SHA" = "$REMOTE_SHA" ] || { echo "local main (${SHA:0:8}) != origin/main (${REMOTE_SHA:0:8}); run: git pull --ff-only origin main" >&2; exit 1; }
+if ! $FORCE && git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+  echo "tag $TAG already exists (pass --force to re-create it)" >&2
+  exit 1
+fi
+
+read -r -p "bump $GEM to $NEXT, push main and publish $TAG to GitHub + RubyGems? [y/N] " answer
+[[ "$answer" =~ ^[Yy]$ ]] || { echo "aborted"; exit 1; }
+
+if $FORCE; then
+  exec bundle exec rake "release[$NEXT,force]"
+else
+  exec bundle exec rake "release[$NEXT]"
+fi

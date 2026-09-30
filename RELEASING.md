@@ -10,25 +10,30 @@ Releases are fully automated via GitHub Actions with supply chain security built
 | **Sigstore attestation** | Every gem is signed with a keyless Sigstore signature, logged in a public transparency log. |
 | **SHA-256 + SHA-512 checksums** | Checksum files attached to every GitHub release for independent verification. |
 | **Tag-version gate** | CI refuses to publish if the git tag doesn't match `SidekiqUniqueJobs::VERSION`. |
-| **Gem content verification** | CI unpacks the gem and checks for unwanted files (specs, rake files, etc.) before publishing. |
+| **Gem content verification** | CI unpacks the gem and checks for unwanted files (`.git*`, the gemspec, `spec/`, `test/`) before publishing; the gemspec's file whitelist keeps everything else (rake files, `myapp/`) out. |
 | **MFA required** | `rubygems_mfa_required` is set in the gemspec. Manual pushes require MFA. |
 | **Environment protection** | The `rubygems` GitHub environment can require approvals before publish. |
 
 ## How to release
 
 ```bash
-# Stable release
-rake release[1.2.3]
-
-# Pre-release
-rake release[1.2.3.alpha1]
-
-# Release current version as pre-release (no version bump)
-rake release[pre]
+bin/release list                 # last releases + what each bump would give
+bin/release --dry-run            # version, changes since the last tag, downstream blockers
+bin/release                      # patch bump (or `minor` / `major`)
+bin/release 9.0.0.alpha3         # explicit version; alpha/beta/rc/pre = pre-release
+bin/release 9.0.0.alpha3 --force # delete + re-create an existing tag/release
 ```
 
-The rake task handles everything locally (version bump, commit, push) then runs
-`gh release create` which triggers the CI pipeline:
+`bin/release` checks you're on a clean, up-to-date `main`, warns when
+`version.rb` and the newest tag disagree, confirms, and hands off to
+`rake release[X.Y.Z]` (`rakelib/release.rake`). The task bumps
+`lib/sidekiq_unique_jobs/version.rb` and the `sidekiq-unique-jobs` pin in the
+tracked `docs/` and `myapp/` lockfiles, verifies `gem build --strict`, commits,
+pushes `main`, and runs `gh release create`, which triggers the CI pipeline.
+`bin/release`, `rakelib/release.rake` and everything in `release.yml` except its
+`test` job are the zoolutions release kit, shared verbatim with the other gems
+(canonical copy and upgrade steps: docs-kit's `RELEASE_KIT.md`). Don't edit
+them here.
 
 1. **test** — runs rubocop + rspec against Redis
 2. **build** — verifies tag/version match, builds gem with `--strict`, verifies contents, generates checksums

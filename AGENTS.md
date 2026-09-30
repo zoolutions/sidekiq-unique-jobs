@@ -52,8 +52,9 @@ hook-rewritable shapes: no `for`/subshell wrappers, no `| head` on rtk-handled c
 # Run all checks (style, tests, documentation)
 bundle exec rake
 
-# Release a new gem version (only for maintainers)
-bundle exec rake release
+# Release a new gem version (only for maintainers; see RELEASING.md)
+bin/release --dry-run   # what would ship
+bin/release             # patch bump; `minor`, `major` or an explicit 9.0.0.alpha3
 ```
 
 ## Architecture

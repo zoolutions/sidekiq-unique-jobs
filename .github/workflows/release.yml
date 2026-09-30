@@ -1,5 +1,18 @@
 name: Release
 
+# The zoolutions release kit (canonical copy in docs-kit, see RELEASE_KIT.md;
+# sync with `script/release-kit sync`). Everything outside the project-specific
+# `test` job is BYTE-IDENTICAL in every gem: the gem name and version come from
+# the one *.gemspec. Hardened for zizmor: actions pinned by SHA, no bundler cache
+# in a publishing workflow (cache poisoning), `${{ }}` only via env (template
+# injection), checkout without persisted credentials.
+#
+# The test job MUST install frozen whenever a Gemfile.lock is committed: that is
+# the gate that fails a release whose lockfile pins `rake release` missed,
+# before anything is published.
+#
+# Fired by `rake release[X.Y.Z]` / `bin/release` publishing the GitHub Release.
+
 on:
   release:
     types: [published]
@@ -8,163 +21,174 @@ permissions:
   contents: read
 
 jobs:
+  # ── project-specific ──────────────────────────────────────────────────────
   test:
+    name: Test before release
     runs-on: ubuntu-latest
     services:
       redis:
-        image: redis:latest
+        image: redis:8@sha256:6f81e8915c60b065a524e6967e0ad1c639ba6efa84d669f823683ea04d9150ee
         ports:
           - 6379:6379
-
     steps:
-      - uses: actions/checkout@v7
-      - uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
         with:
           ruby-version: "3.4"
-          bundler-cache: true
+      - run: bundle install
+        env:
+          BUNDLE_FROZEN: ${{ hashFiles('Gemfile.lock') != '' }}
       - run: bundle exec rubocop -P
-      - run: REDIS_HOST=localhost bundle exec rspec --tag ~perf
+      - run: bundle exec rspec --tag ~perf
+        env:
+          REDIS_HOST: localhost
 
+  # ── shared: keep identical across the gems ────────────────────────────────
   build:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
-      gem_name: ${{ steps.build.outputs.gem_name }}
-      version: ${{ steps.build.outputs.version }}
-
+      gem: ${{ steps.gem.outputs.gem }}
+      version: ${{ steps.gem.outputs.version }}
+      gem_file: ${{ steps.build.outputs.gem_file }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
         with:
           ruby-version: "3.4"
-          bundler-cache: true
 
       - name: Verify tag matches gem version
+        id: gem
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          GEM_VERSION=$(ruby -r ./lib/sidekiq_unique_jobs/version -e "puts SidekiqUniqueJobs::VERSION")
-          TAG_VERSION="${{ github.event.release.tag_name }}"
-          TAG_VERSION="${TAG_VERSION#v}"
-          if [ "$GEM_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::Tag version ($TAG_VERSION) does not match gem version ($GEM_VERSION)"
+          read -r GEM VERSION < <(ruby -e '
+            specs = Dir["*.gemspec"]
+            abort "expected exactly one *.gemspec, found #{specs.inspect}" unless specs.size == 1
+            spec = Gem::Specification.load(specs.first)
+            puts "#{spec.name} #{spec.version}"
+          ')
+          if [ "$VERSION" != "${RELEASE_TAG#v}" ]; then
+            echo "::error::Tag ($RELEASE_TAG) does not match the $GEM gemspec version ($VERSION)"
             exit 1
           fi
+          echo "gem=$GEM" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build gem
         id: build
+        env:
+          GEM: ${{ steps.gem.outputs.gem }}
+          VERSION: ${{ steps.gem.outputs.version }}
         run: |
-          gem build sidekiq-unique-jobs.gemspec --strict
-          GEM_NAME=$(ls sidekiq-unique-jobs-*.gem)
-          echo "gem_name=$GEM_NAME" >> "$GITHUB_OUTPUT"
-          TAG_VERSION="${{ github.event.release.tag_name }}"
-          echo "version=${TAG_VERSION#v}" >> "$GITHUB_OUTPUT"
+          gem build "$GEM.gemspec" --strict
+          echo "gem_file=$GEM-$VERSION.gem" >> "$GITHUB_OUTPUT"
 
       - name: Verify gem contents
+        env:
+          GEM_FILE: ${{ steps.build.outputs.gem_file }}
         run: |
-          GEM_NAME=$(ls sidekiq-unique-jobs-*.gem)
-          gem unpack "$GEM_NAME" --target /tmp/gem-verify
+          gem unpack "$GEM_FILE" --target /tmp/gem-verify
+          echo "=== $(find /tmp/gem-verify -type f | wc -l) files ==="
 
-          echo "=== File count ==="
-          find /tmp/gem-verify -type f | wc -l
-
-          echo "=== Checking for unwanted files ==="
-          UNWANTED=$(find /tmp/gem-verify \( -name "*.rake" -o -name ".git*" -o -name "*.gemspec" \) -print)
-          if [ -n "$UNWANTED" ]; then
-            echo "::error::Unwanted files found in gem:"
-            echo "$UNWANTED"
+          UNWANTED=$(find /tmp/gem-verify \( -name ".git*" -o -name "*.gemspec" \) -print)
+          UNWANTED_DIRS=$(find /tmp/gem-verify -type d \( -name "spec" -o -name "test" \) -print)
+          if [ -n "$UNWANTED$UNWANTED_DIRS" ]; then
+            echo "::error::Unwanted files in the gem:"
+            printf '%s\n' "$UNWANTED" "$UNWANTED_DIRS"
             exit 1
           fi
-
-          UNWANTED_DIRS=$(find /tmp/gem-verify -type d \( -name "spec" -o -name "test" -o -name "myapp" \) -print)
-          if [ -n "$UNWANTED_DIRS" ]; then
-            echo "::error::Unwanted directories found in gem:"
-            echo "$UNWANTED_DIRS"
-            exit 1
-          fi
-
           echo "No unwanted files found"
 
       - name: Generate checksums
+        env:
+          GEM_FILE: ${{ steps.build.outputs.gem_file }}
         run: |
-          GEM_NAME=$(ls sidekiq-unique-jobs-*.gem)
-          sha256sum "$GEM_NAME" > "$GEM_NAME.sha256"
-          sha512sum "$GEM_NAME" > "$GEM_NAME.sha512"
-          echo "=== SHA256 ===" && cat "$GEM_NAME.sha256"
-          echo "=== SHA512 ===" && cat "$GEM_NAME.sha512"
+          sha256sum "$GEM_FILE" | tee "$GEM_FILE.sha256"
+          sha512sum "$GEM_FILE" | tee "$GEM_FILE.sha512"
 
       - name: Upload gem artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: gem
           path: |
-            sidekiq-unique-jobs-*.gem
-            sidekiq-unique-jobs-*.gem.sha256
-            sidekiq-unique-jobs-*.gem.sha512
+            ${{ steps.build.outputs.gem_file }}
+            ${{ steps.build.outputs.gem_file }}.sha256
+            ${{ steps.build.outputs.gem_file }}.sha512
           if-no-files-found: error
 
   publish-rubygems:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment: rubygems
     permissions:
       id-token: write
-
+    env:
+      GEM: ${{ needs.build.outputs.gem }}
+      VERSION: ${{ needs.build.outputs.version }}
+      GEM_FILE: ${{ needs.build.outputs.gem_file }}
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: gem
 
       - name: Verify checksums
         run: |
-          sha256sum -c sidekiq-unique-jobs-*.gem.sha256
-          sha512sum -c sidekiq-unique-jobs-*.gem.sha512
+          sha256sum -c "$GEM_FILE.sha256"
+          sha512sum -c "$GEM_FILE.sha512"
 
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
         with:
           ruby-version: "3.4"
 
       - name: Configure RubyGems trusted publishing credentials
-        uses: rubygems/configure-rubygems-credentials@v2.1.0
+        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
 
-      - name: Push to RubyGems with Sigstore attestation
+      # Always sign, so a re-run still has a Sigstore bundle for the release
+      # assets; skip only the push when this version is already on RubyGems.
+      - name: Sign with Sigstore and push to RubyGems
         run: |
-          GEM_NAME=$(ls sidekiq-unique-jobs-*.gem)
+          gem exec sigstore-cli sign "$GEM_FILE" --bundle "$GEM_FILE.sigstore.json"
 
-          gem exec sigstore-cli sign "$GEM_NAME" \
-            --bundle "$GEM_NAME.sigstore.json"
-
-          gem push "$GEM_NAME" --attestation "$GEM_NAME.sigstore.json"
+          if curl -fsS -o /dev/null "https://rubygems.org/api/v2/rubygems/$GEM/versions/$VERSION.json"; then
+            echo "::warning::$GEM $VERSION is already on RubyGems, skipping the push"
+          else
+            gem push "$GEM_FILE" --attestation "$GEM_FILE.sigstore.json"
+          fi
 
       - name: Upload Sigstore bundle
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sigstore
-          path: sidekiq-unique-jobs-*.gem.sigstore.json
+          path: ${{ needs.build.outputs.gem_file }}.sigstore.json
           if-no-files-found: error
 
   upload-release-assets:
     needs: [build, publish-rubygems]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
-
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: gem
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: sigstore
 
-      - name: Upload assets to GitHub release
+      - name: Upload assets to the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPO: ${{ github.repository }}
+          GEM_FILE: ${{ needs.build.outputs.gem_file }}
         run: |
-          GEM_NAME="${{ needs.build.outputs.gem_name }}"
-          gh release upload "${{ github.event.release.tag_name }}" \
-            "$GEM_NAME" \
-            "$GEM_NAME.sha256" \
-            "$GEM_NAME.sha512" \
-            "$GEM_NAME.sigstore.json" \
-            --repo "${{ github.repository }}"
+          gh release upload "$RELEASE_TAG" \
+            "$GEM_FILE" "$GEM_FILE.sha256" "$GEM_FILE.sha512" "$GEM_FILE.sigstore.json" \
+            --repo "$REPO" --clobber
