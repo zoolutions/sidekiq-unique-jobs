@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-# docs-kit synced: v1.0.8
-
+# docs-kit synced: v1.2.1
 # docs-kit configuration — everything that makes this site look like
 # "sidekiq-unique-jobs" rather than any other docs site. The shared chrome
 # (Shell/Sidebar/ThemeSwitcher/Code/Page) comes from the gem; only this config

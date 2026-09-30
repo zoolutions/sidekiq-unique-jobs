@@ -66,6 +66,9 @@ end
 - **The primary argument is positional; modifiers are keywords.**
   `Section("Title", description:)`, `Code(source, filename:)`,
   `Header("Title", eyebrow:)`.
+- **`Code`'s `filename:` selects the language** (`*.yml` → yaml, `Dockerfile`
+  → docker, `*.sh` → shell, …); pass `lexer:` only to override the guess or when
+  there is no filename (the default is ruby).
 - **Wrappers that take no positional arg use lowercase page helpers** so a block
   needs no parens: `md <<~'MD' … MD`, `prose { … }`, `example { |ex| … }`,
   `operation "operationId"`. (A bare `DocsUI::Prose do` is a Ruby SyntaxError; the

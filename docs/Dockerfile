@@ -8,7 +8,7 @@
 ARG RUBY_VERSION=4.0.5
 FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
 
-ARG BUN_VERSION=1.3.2
+ARG BUN_VERSION=1.4.2
 ENV BUN_INSTALL="/usr/local/bun"
 ENV PATH="/usr/local/bun/bin:$PATH"
 
