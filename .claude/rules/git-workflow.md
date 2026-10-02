@@ -34,8 +34,9 @@ Refs #123
 2. Make focused, atomic commits
 3. Run all validators before pushing
 4. Create PR with description and test plan
-5. Request review
-6. Squash merge when approved
+5. Label the PR: exactly one `type` + at least one `area` (`gh pr create --label …`), never a `status` label. `bin/labels infer <changed paths>` gives the areas; the taxonomy is `.github/labels.yml`, the rules are `.github/LABELS.md`
+6. Request review
+7. Squash merge when approved
 
 ## Pre-Commit Checklist
 
@@ -53,3 +54,4 @@ bundle exec rspec <relevant_specs>  # Tests
 - **ALWAYS** write meaningful commit messages
 - Keep commits small and focused
 - One logical change per commit
+- Labels are edited in `.github/labels.yml` and applied with `bin/labels sync`, never by hand in the GitHub UI. `bin/labels` and `.github/LABELS.md` are the zoolutions labels kit (canonical copy in docs-kit, see its LABELS_KIT.md): never edit them here — change docs-kit, then `script/labels-kit sync`

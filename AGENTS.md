@@ -203,6 +203,16 @@ Workers can define `after_unlock` instance or class method for cleanup after loc
 
 6. **Middleware not loaded**: Since v7, middleware must be manually added to Sidekiq configuration. Check initializer follows the README pattern.
 
+## Labels
+
+Every pull request carries exactly one `type` label and at least one `area`
+label from `.github/labels.yml` — never a `status` label. `/plan` labels the
+issue, `/lfg` copies the issue's labels onto the PR (or infers them:
+`bin/labels infer $(git diff --name-only origin/main...HEAD)`). Labels change in
+the manifest and reach GitHub with `bin/labels sync`, never through the UI.
+Rules: `.github/LABELS.md`. `bin/labels` + `.github/LABELS.md` are the shared
+labels kit (canonical copy in docs-kit): never edit them in place.
+
 ## Screenshots on PRs and issues (Web UI changes)
 
 This gem ships a Sidekiq Web UI extension (`lib/sidekiq_unique_jobs/web/`). A change to a Web UI
@@ -210,7 +220,7 @@ view, template, or stylesheet ships with before/after pictures **on the PR**, at
 terminal. Never a local path, a base64 blob, or "screenshot available on request".
 
 ```bash
-gh pr create --attach './after.png#Locks tab, digest column' --title … --body …   # picture in hand already
+gh pr create --attach './after.png#Locks tab, digest column' --title … --label <type> --label <area> --body …   # picture in hand already
 gh pr comment <n> --attach './after.png#Locks tab, digest column' --body 'Before/after for the digest column.'
 gh pr comment <n> --attach ./before.png --attach ./after.png   # repeat the flag, up to 50 files
 gh issue comment <n> --attach ./repro.mp4                       # video renders as a player

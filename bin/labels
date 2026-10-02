@@ -1,0 +1,344 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Keeps the GitHub label taxonomy in `.github/labels.yml` and the labels that
+# actually exist on this repository in agreement. The manifest is the source of
+# truth; this script is the only thing that edits labels, so a label change is a
+# reviewable diff instead of a click in the GitHub UI.
+#
+# Usage:
+#   bin/labels sync [--dry-run] [--delete]   make GitHub match the manifest
+#   bin/labels infer <paths…>                area labels for changed files
+#   bin/labels migrate <old> <new…>          re-label every item, then drop <old>
+#   bin/labels validate                      check the manifest itself (offline)
+#
+# `sync` creates and updates unconditionally, but only deletes with `--delete`,
+# and it REFUSES to delete a label that is still on any issue or pull request,
+# open or closed — deleting a label strips it from every item silently, so the
+# re-labelling (`migrate`) has to happen first. Labels matching the manifest's
+# `ignore:` globs (labels some automation creates and deletes on its own) are
+# never touched.
+#
+# Everything goes through the `gh` CLI, so `gh auth status` is the only
+# credential requirement. The runner is injectable; specs drive a fake.
+#
+# Part of the zoolutions labels kit (canonical copy in docs-kit, see
+# LABELS_KIT.md): byte-identical in every repo, never edited in place, and kept
+# Ruby 3.1-compatible because it ships to the repo with the oldest Ruby floor.
+require "json"
+require "open3"
+require "yaml"
+
+module Labels
+  MANIFEST = File.expand_path("../.github/labels.yml", __dir__)
+
+  class Error < StandardError
+  end
+
+  # The real thing: shells out to `gh` and hands back stdout.
+  class GhRunner
+    def call(*args)
+      stdout, stderr, status = Open3.capture3("gh", *args)
+      raise Error, "gh #{args.join(' ')} failed: #{stderr.strip}" unless status.success?
+
+      stdout
+    end
+  end
+
+  # .github/labels.yml, read once.
+  class Manifest
+    # FNM_PATHNAME is what makes `**/` recursive and stops a single `*` from
+    # eating slashes; FNM_EXTGLOB allows `{a,b}` alternation in a glob.
+    GLOB_FLAGS = File::FNM_PATHNAME | File::FNM_EXTGLOB
+
+    attr_reader :path
+
+    def initialize(path)
+      @path = path
+    end
+
+    def labels = data.fetch("labels")
+
+    def names = labels.map { |label| label["name"] }
+
+    def areas = labels.select { |label| label["group"] == "area" }.map { |label| label["name"] }
+
+    def paths = data.fetch("paths", nil) || {}
+
+    def ignored?(name) = (data.fetch("ignore", nil) || []).any? { |glob| File.fnmatch?(glob, name) }
+
+    def areas_for(file)
+      candidate = file.delete_prefix("./")
+
+      paths.filter_map { |glob, label| label if File.fnmatch?(recursive(glob), candidate, GLOB_FLAGS) }
+    end
+
+    def display_name = path.to_s.sub("#{Dir.pwd}/", "")
+
+    private
+
+    # A trailing bare `**` only spans one path segment under FNM_PATHNAME,
+    # which is never what someone writing `app/**` meant.
+    def recursive(glob) = glob.end_with?("/**") ? "#{glob}/*" : glob
+
+    def data = @data ||= YAML.safe_load_file(path)
+  end
+
+  # Checks a manifest without calling GitHub.
+  class Validator
+    # The groups LABELS.md defines. `type` and `area` are what a pull request
+    # carries; the rest describe an issue's lifecycle or origin.
+    GROUPS = %w[type area status source community legacy].freeze
+    KEYS = %w[name color description group].freeze
+    COLOR = /\A[0-9a-f]{6}\z/
+
+    def initialize(manifest)
+      @manifest = manifest
+    end
+
+    def problems
+      found = @manifest.labels.flat_map { |label| label_problems(label) } + duplicates + unmapped_paths
+      found << "no area labels — every pull request needs at least one" if @manifest.areas.empty?
+      found
+    end
+
+    private
+
+    def label_problems(label)
+      name = label["name"] || "(unnamed)"
+      missing = KEYS.select { |key| label[key].to_s.strip.empty? }.map { |key| "#{name}: no #{key}" }
+      missing + shape_problems(name, label)
+    end
+
+    def shape_problems(name, label)
+      found = []
+      found << "#{name}: unknown group #{label['group']}" if label["group"] && !GROUPS.include?(label["group"])
+      found << "#{name}: colour must be six lowercase hex digits" unless COLOR.match?(label["color"].to_s)
+      found
+    end
+
+    def duplicates
+      names = @manifest.names
+      names.select { |name| names.count(name) > 1 }.uniq.map { |name| "#{name}: listed more than once" }
+    end
+
+    def unmapped_paths
+      @manifest.paths.reject { |_glob, label| @manifest.areas.include?(label) }
+               .map { |glob, label| "paths: #{glob} maps to #{label}, which is not an area label" }
+    end
+  end
+
+  # Thin wrapper over the runner for the `gh` calls the commands share.
+  class Github
+    # `gh` caps at 1000; a label's lifetime history is a few hundred items.
+    HISTORY_LIMIT = 500
+
+    def initialize(runner)
+      @runner = runner
+    end
+
+    # Takes the argv as one array: `gh` is the runner's job, not this wrapper's.
+    def call(argv) = @runner.call(*argv)
+
+    def labels
+      parse(call(%w[label list --limit 200 --json name,color,description]))
+        .to_h { |label| [label["name"], label] }
+    end
+
+    # Closed items too: deleting a label strips it from history as well, which
+    # is why `migrate` re-labels them and `sync --delete` refuses while any remain.
+    def history(kind, label) = numbers(kind, label, "all", HISTORY_LIMIT)
+
+    def items(label) = %w[issue pr].flat_map { |kind| history(kind, label) }
+
+    private
+
+    # `gh --label` splits its value on commas, so a name with one would be looked
+    # up as two labels and come back empty — read as "safe to delete".
+    def numbers(kind, label, state, limit)
+      raise Error, "#{label.inspect} has a comma, which gh --label cannot query; rename it first" if label.include?(",")
+
+      output = call([kind, "list", "--state", state, "--label", label, "--json", "number", "--limit", limit.to_s])
+      parse(output).map { |item| item["number"] }
+    end
+
+    def parse(output) = output.to_s.strip.empty? ? [] : JSON.parse(output)
+  end
+
+  # `sync`: the create/update/delete plan, reported and (unless a dry run) applied.
+  class Sync
+    def initialize(manifest, github, out)
+      @manifest = manifest
+      @github = github
+      @out = out
+    end
+
+    def call(dry_run:, delete:)
+      plan = build_plan(@github.labels)
+      return nothing_to_do if plan.values.all?(&:empty?)
+
+      report(plan, dry_run: dry_run, delete: delete)
+      dry_run ? 0 : apply(plan, delete: delete)
+    end
+
+    private
+
+    def build_plan(remote)
+      {
+        create: @manifest.labels.reject { |label| remote.key?(label["name"]) },
+        update: @manifest.labels.select { |label| drifted?(remote[label["name"]], label) },
+        delete: (remote.keys - @manifest.names).reject { |name| @manifest.ignored?(name) }.sort
+      }
+    end
+
+    def drifted?(remote, desired)
+      return false if remote.nil?
+
+      !remote["color"].to_s.casecmp?(desired["color"].to_s) ||
+        remote["description"].to_s != desired["description"].to_s
+    end
+
+    def nothing_to_do
+      @out.puts("nothing to do — #{@manifest.labels.size} label(s) already match #{@manifest.display_name}")
+      0
+    end
+
+    def report(plan, dry_run:, delete:)
+      @out.puts(dry_run ? "plan (dry run) against #{@manifest.display_name}:" : "syncing #{@manifest.display_name}:")
+      plan_lines(plan, delete: delete).each { |line| @out.puts("  #{line}") }
+      @out.puts("  #{summary(plan)}")
+    end
+
+    def plan_lines(plan, delete:)
+      plan[:create].map { |label| "create #{label['name']} — #{label['color']} #{label['description']}" } +
+        plan[:update].map { |label| "update #{label['name']} — #{label['description']}" } +
+        plan[:delete].map { |name| "delete #{name}#{' (pass --delete to remove)' unless delete}" }
+    end
+
+    def summary(plan) = plan.map { |verb, items| "#{items.size} to #{verb}" }.join(", ")
+
+    def apply(plan, delete:)
+      plan[:create].each { |label| @github.call(["label", "create", label["name"], *flags(label)]) }
+      plan[:update].each { |label| @github.call(["label", "edit", label["name"], *flags(label)]) }
+      return 0 unless delete
+
+      plan[:delete].map { |name| deleted?(name) }.all? ? 0 : 1
+    end
+
+    def flags(label) = ["--color", label["color"], "--description", label["description"]]
+
+    # Refuses (false) while the label is still on any item: it is not migrated
+    # yet, and `gh label delete` would strip it from those items silently.
+    def deleted?(name)
+      blockers = @github.items(name).map { |number| "##{number}" }
+      if blockers.empty?
+        @github.call(["label", "delete", name, "--yes"])
+        return true
+      end
+
+      @out.puts("  refused: #{name} is still on #{blockers.join(', ')} — `bin/labels migrate` it first")
+      false
+    end
+  end
+
+  # `migrate <old> <new…>`: add the replacements and drop <old> on every item.
+  class Migrate
+    def initialize(github, out)
+      @github = github
+      @out = out
+    end
+
+    def call(old, replacements)
+      items = %w[issue pr].to_h { |kind| [kind, @github.history(kind, old)] }
+      total = items.values.sum(&:size)
+      return nothing_to_migrate(old) if total.zero?
+
+      items.each { |kind, numbers| numbers.each { |number| relabel(kind, number, old, replacements) } }
+      @out.puts("migrated #{total} item(s) from #{old} to #{replacements.join(', ')}")
+      0
+    end
+
+    private
+
+    def nothing_to_migrate(old)
+      @out.puts(%(no items carry "#{old}" — nothing to migrate))
+      0
+    end
+
+    def relabel(kind, number, old, replacements)
+      adds = replacements.flat_map { |label| ["--add-label", label] }
+      @github.call([kind, "edit", number.to_s, *adds, "--remove-label", old])
+      @out.puts("  #{kind} ##{number}: #{replacements.map { |label| "+#{label}" }.join(' ')} -#{old}")
+    end
+  end
+
+  # Parses argv and hands off to the command; returns the exit status.
+  class CLI
+    USAGE = <<~TEXT
+      usage: bin/labels <command>
+
+        sync [--dry-run] [--delete]   make GitHub match .github/labels.yml
+        infer <paths…>                print the area labels those paths map to
+        migrate <old> <new…>          add <new…> and remove <old> on every item
+        validate                      check .github/labels.yml without calling GitHub
+
+      Run `migrate` for every obsolete label before `sync --delete`.
+    TEXT
+
+    def initialize(manifest: MANIFEST, runner: GhRunner.new, out: $stdout)
+      @manifest = Manifest.new(manifest)
+      @github = Github.new(runner)
+      @out = out
+    end
+
+    def call(argv)
+      command, *rest = argv
+      dispatch(command, rest)
+    rescue Error => e
+      @out.puts("error: #{e.message}")
+      1
+    end
+
+    private
+
+    def dispatch(command, rest)
+      case command
+      when "sync" then Sync.new(@manifest, @github, @out).call(dry_run: rest.include?("--dry-run"),
+                                                               delete: rest.include?("--delete"))
+      when "infer" then infer(rest)
+      when "migrate" then migrate(rest)
+      when "validate" then validate
+      else usage
+      end
+    end
+
+    def infer(paths)
+      paths.flat_map { |path| @manifest.areas_for(path) }.uniq.sort.each { |label| @out.puts(label) }
+      0
+    end
+
+    def migrate(args)
+      old, *replacements = args
+      return usage if old.nil? || replacements.empty?
+
+      Migrate.new(@github, @out).call(old, replacements)
+    end
+
+    def validate
+      problems = Validator.new(@manifest).problems
+      problems.each { |problem| @out.puts("#{@manifest.display_name}: #{problem}") }
+      return 1 if problems.any?
+
+      @out.puts("#{@manifest.display_name}: #{@manifest.labels.size} label(s), " \
+                "#{@manifest.paths.size} path glob(s) — valid")
+      0
+    end
+
+    def usage
+      @out.puts(USAGE)
+      1
+    end
+  end
+end
+
+exit Labels::CLI.new.call(ARGV) if $PROGRAM_NAME == __FILE__

@@ -1,0 +1,225 @@
+# The label taxonomy for zoolutions/sidekiq-unique-jobs — the single source of truth.
+#
+# `bin/labels sync` makes GitHub match this file; `bin/labels validate` checks it
+# offline. The rules live in .github/LABELS.md.
+#
+# Every label outside the `area` group, and the shared `devops`/`dx`/`docs-site`
+# areas, come from docs-kit's labels kit (LABELS_KIT.md) and must stay identical
+# to docs-kit's copy (`script/labels-kit check`). The other areas are this repo's.
+---
+ignore: []
+
+labels:
+  # ---------------------------------------------------------------- type ----
+  # Exactly one per issue/PR: what kind of work this is.
+  - name: bug
+    color: d73a4a
+    description: Something isn't working
+    group: type
+  - name: enhancement
+    color: a2eeef
+    description: New feature or request
+    group: type
+  - name: performance
+    color: fbca04
+    description: Faster or leaner with no change in behaviour
+    group: type
+  - name: tech-debt
+    color: 9c27bb
+    description: Refactoring or cleanup that pays down an accepted shortcut
+    group: type
+  - name: security
+    color: e9e257
+    description: Vulnerability, hardening, or an authorization correctness fix
+    group: type
+  - name: documentation
+    color: 0075ca
+    description: Improvements or additions to documentation
+    group: type
+  - name: dependencies
+    color: d93f0b
+    description: Changes dependencies in some way
+    group: type
+  - name: chore
+    color: ededed
+    description: CI, tooling or configuration work with no behaviour change
+    group: type
+
+  # ---------------------------------------------------------------- area ----
+  # One or more per issue/PR: which part of the code it touches. Shared first.
+  - name: devops
+    color: 006b75
+    description: CI, the release kit, Docker, deploys and infrastructure
+    group: area
+  - name: dx
+    color: 16a085
+    description: Developer experience — agent commands and rules, generators, local tooling
+    group: area
+  - name: docs-site
+    color: 2ea44f
+    description: The documentation site under docs/
+    group: area
+  # sidekiq-unique-jobs's own areas.
+  - name: locks
+    color: 1d76db
+    description: Lock types, lock metadata and the locksmith
+    group: area
+  - name: lua
+    color: 0366d6
+    description: The Lua scripts and the script runner
+    group: area
+  - name: conflicts
+    color: 7eafec
+    description: on_conflict strategies
+    group: area
+  - name: middleware
+    color: 5b8def
+    description: The Sidekiq client and server middleware
+    group: area
+  - name: reaper
+    color: 3e6abd
+    description: The orphan reaper, expiry and lock upgrades
+    group: area
+  - name: redis
+    color: 1f6feb
+    description: Redis structures — digests, changelogs and lock info
+    group: area
+  - name: web
+    color: 0e8a16
+    description: The Sidekiq Web extension
+    group: area
+  - name: testing
+    color: 42b204
+    description: RSpec matchers and the testing helpers shipped to host apps
+    group: area
+  - name: myapp
+    color: 1abc9c
+    description: The example app under myapp/
+    group: area
+
+  # -------------------------------------------------------------- status ----
+  # Where an issue is in its lifecycle. Never on a pull request.
+  - name: plan
+    color: 6f42c1
+    description: Has a /plan body with Context, Decision, Steps and Gates; ready for /lfg
+    group: status
+  - name: epic
+    color: 5319e7
+    description: Umbrella item tracking several smaller issues
+    group: status
+  - name: blocker
+    color: 8a63d2
+    description: Blocks other work or a release until it is resolved
+    group: status
+  - name: needs-info
+    color: d4c5f9
+    description: Waiting on details before it can be planned or worked on
+    group: status
+
+  # ----------------------------------------------------------- community ----
+  # GitHub's defaults, kept because GitHub surfaces them to contributors.
+  - name: good first issue
+    color: 7057ff
+    description: Good for newcomers
+    group: community
+  - name: help wanted
+    color: "008672"
+    description: Extra attention is needed
+    group: community
+  - name: question
+    color: d876e3
+    description: Further information is requested
+    group: community
+  - name: duplicate
+    color: cfd3d7
+    description: This issue or pull request already exists
+    group: community
+  - name: invalid
+    color: e4e669
+    description: This doesn't seem right
+    group: community
+  - name: wontfix
+    color: ffffff
+    description: This will not be worked on
+    group: community
+
+  # -------------------------------------------------------------- legacy ----
+  # Kept for the history they carry; never applied to new items.
+  - name: master
+    color: ededed
+    description: "Legacy: affects the master branch of the pre-v7 era"
+    group: legacy
+  - name: v7.x
+    color: ededed
+    description: "Legacy: affects the 7.x series"
+    group: legacy
+  - name: v6.x
+    color: ededed
+    description: "Legacy: affects the 6.x series"
+    group: legacy
+  - name: v5.x
+    color: ededed
+    description: "Legacy: affects the 5.x series"
+    group: legacy
+  - name: v4.x
+    color: ededed
+    description: "Legacy: affects the 4.x series"
+    group: legacy
+  - name: announcement
+    color: ededed
+    description: "Legacy: a project announcement"
+    group: legacy
+  - name: codeclimate
+    color: ededed
+    description: "Legacy: raised by Code Climate"
+    group: legacy
+  - name: ruby
+    color: ededed
+    description: "Legacy: dependabot's Ruby ecosystem label"
+    group: legacy
+  - name: javascript
+    color: ededed
+    description: "Legacy: dependabot's JavaScript ecosystem label"
+    group: legacy
+  - name: github_actions
+    color: ededed
+    description: "Legacy: dependabot's GitHub Actions ecosystem label"
+    group: legacy
+
+# Path globs -> area label, used by `bin/labels infer` and by /plan and /lfg to
+# label deterministically from a diff. Matched with File.fnmatch and
+# File::FNM_PATHNAME | File::FNM_EXTGLOB: write a recursive glob as `**/*`. A
+# path may match several globs — every matching area applies.
+paths:
+  "lib/sidekiq_unique_jobs/lock/**/*": locks
+  "lib/sidekiq_unique_jobs/{lock,lock_*,locksmith,unlockable}.rb": locks
+  "lib/sidekiq_unique_jobs/{lua,script}/**/*": lua
+  "lib/sidekiq_unique_jobs/script.rb": lua
+  "lib/sidekiq_unique_jobs/on_conflict/**/*": conflicts
+  "lib/sidekiq_unique_jobs/on_conflict.rb": conflicts
+  "lib/sidekiq_unique_jobs/middleware/**/*": middleware
+  "lib/sidekiq_unique_jobs/{middleware,server}.rb": middleware
+  "lib/sidekiq_unique_jobs/orphans/**/*": reaper
+  "lib/sidekiq_unique_jobs/{timer_task,upgrade_locks}.rb": reaper
+  "lib/sidekiq_unique_jobs/redis/**/*": redis
+  "lib/sidekiq_unique_jobs/redis.rb": redis
+  "lib/sidekiq_unique_jobs/web/**/*": web
+  "lib/sidekiq_unique_jobs/web.rb": web
+  "lib/sidekiq_unique_jobs/rspec/**/*": testing
+  "lib/sidekiq_unique_jobs/testing.rb": testing
+  "myapp/**/*": myapp
+  "{my_app,rails_example}/**/*": myapp
+  "spec/sidekiq_unique_jobs/lock/**/*": locks
+  "spec/sidekiq_unique_jobs/{lua,script}/**/*": lua
+  "spec/sidekiq_unique_jobs/on_conflict/**/*": conflicts
+  "spec/sidekiq_unique_jobs/orphans/**/*": reaper
+  "spec/sidekiq_unique_jobs/web/**/*": web
+  ".github/**/*": devops
+  "bin/release": devops
+  "rakelib/**/*": devops
+  "Dockerfile*": devops
+  ".claude/**/*": dx
+  "{AGENTS,CLAUDE}.md": dx
+  "bin/labels": dx
+  "lode/**/*": dx
+  "docs/**/*": docs-site
