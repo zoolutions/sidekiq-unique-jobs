@@ -2,7 +2,7 @@
 description: "Investigates the codebase, designs a solution, and produces a durable plan artifact — a GitHub issue or a plan markdown under docs/plans/. Read-only: never edits application code. Use before /lfg for anything non-trivial."
 model: fable
 argument-hint: "issue <feature or problem> | md <feature or problem> | <feature or problem>"
-allowed-tools: Bash(gh issue create:*), Bash(gh issue edit:*), Bash(bin/labels infer:*), Bash(bin/labels sync), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh search:*), Bash(gh label list:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(date:*), Read, Grep, Glob, Write, Agent
+allowed-tools: Bash(gh issue create:*), Bash(gh issue edit:*), Bash(bin/labels infer:*), Bash(bin/labels sync), Bash(bin/labels sync --dry-run), Bash(gh issue list:*), Bash(gh issue view:*), Bash(gh search:*), Bash(gh label list:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(date:*), Read, Grep, Glob, Write, Agent
 ---
 
 # Plan — design expensive, execute cheap
@@ -78,8 +78,8 @@ For GitHub issues: create with `gh issue create --title "..." --body "$(cat <<'E
 Every `/plan` issue is labelled — `/lfg` copies its `type` and `area` labels onto the pull request, so getting them right here is what labels the PR. The taxonomy is `.github/labels.yml`; `.github/LABELS.md` explains the groups.
 
 1. **`plan`** — always.
-2. **One type label** — `enhancement` by default; `bug` for a defect, `performance` for a speed-up, `tech-debt` for cleanup, `security` for a vulnerability or hardening, `chore` for CI/tooling/config, `documentation` for docs only, `dependencies` for bumps.
-3. **Area labels** — `bin/labels infer <every path in the Context section>`, plus any area the path map can't see. Never zero.
+2. **One type label** — `enhancement` by default; `bug` for a defect, `performance` for a speed-up, `tech-debt` for cleanup, `security` for a vulnerability or hardening, `chore` for CI/tooling/config, `documentation` for docs only, `dependencies` for bumps. When a change is two things at once, `security` beats `bug`, and `bug` beats `tech-debt`.
+3. **Area labels** — `bin/labels infer <every path the plan will change>` (not files listed only as background reading), plus any area the path map can't see. Never zero.
 
 ```bash
 gh issue edit <number> --add-label plan --add-label <type> --add-label <area> [--add-label <area>…]

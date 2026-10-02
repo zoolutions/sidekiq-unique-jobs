@@ -29,7 +29,7 @@ labels:
     description: Refactoring or cleanup that pays down an accepted shortcut
     group: type
   - name: security
-    color: e9e257
+    color: "e9e257"
     description: Vulnerability, hardening, or an authorization correctness fix
     group: type
   - name: documentation
@@ -104,7 +104,7 @@ labels:
     description: Has a /plan body with Context, Decision, Steps and Gates; ready for /lfg
     group: status
   - name: epic
-    color: 5319e7
+    color: "5319e7"
     description: Umbrella item tracking several smaller issues
     group: status
   - name: blocker
@@ -135,7 +135,7 @@ labels:
     description: This issue or pull request already exists
     group: community
   - name: invalid
-    color: e4e669
+    color: "e4e669"
     description: This doesn't seem right
     group: community
   - name: wontfix
@@ -192,12 +192,15 @@ labels:
 # path may match several globs — every matching area applies.
 paths:
   "lib/sidekiq_unique_jobs/lock/**/*": locks
+  "lib/sidekiq_unique_jobs/lock.rb": locks
   "lib/sidekiq_unique_jobs/{lock,lock_*,locksmith,unlockable}.rb": locks
   "lib/sidekiq_unique_jobs/{lua,script}/**/*": lua
+  "lib/sidekiq_unique_jobs/{lua,script}.rb": lua
   "lib/sidekiq_unique_jobs/script.rb": lua
   "lib/sidekiq_unique_jobs/on_conflict/**/*": conflicts
   "lib/sidekiq_unique_jobs/on_conflict.rb": conflicts
   "lib/sidekiq_unique_jobs/middleware/**/*": middleware
+  "lib/sidekiq_unique_jobs/middleware.rb": middleware
   "lib/sidekiq_unique_jobs/{middleware,server}.rb": middleware
   "lib/sidekiq_unique_jobs/orphans/**/*": reaper
   "lib/sidekiq_unique_jobs/{timer_task,upgrade_locks}.rb": reaper
@@ -208,18 +211,25 @@ paths:
   "lib/sidekiq_unique_jobs/rspec/**/*": testing
   "lib/sidekiq_unique_jobs/testing.rb": testing
   "myapp/**/*": myapp
-  "{my_app,rails_example}/**/*": myapp
   "spec/sidekiq_unique_jobs/lock/**/*": locks
   "spec/sidekiq_unique_jobs/{lua,script}/**/*": lua
   "spec/sidekiq_unique_jobs/on_conflict/**/*": conflicts
   "spec/sidekiq_unique_jobs/orphans/**/*": reaper
   "spec/sidekiq_unique_jobs/web/**/*": web
+  "spec/sidekiq_unique_jobs/lock_spec.rb": locks
+  "spec/sidekiq_unique_jobs/{lock,lock_*,locksmith,unlockable}_spec.rb": locks
+  "spec/sidekiq_unique_jobs/on_conflict_spec.rb": conflicts
+  "spec/sidekiq_unique_jobs/middleware/**/*": middleware
+  "spec/sidekiq_unique_jobs/{middleware,server}_spec.rb": middleware
+  "spec/sidekiq_unique_jobs/{timer_task,upgrade_locks}_spec.rb": reaper
+  "spec/sidekiq_unique_jobs/redis/**/*": redis
+  "spec/sidekiq_unique_jobs/web_spec.rb": web
+  "spec/sidekiq_unique_jobs/rspec/**/*": testing
   ".github/**/*": devops
   "bin/release": devops
   "rakelib/**/*": devops
-  "Dockerfile*": devops
+  "**/Dockerfile*": devops
   ".claude/**/*": dx
   "{AGENTS,CLAUDE}.md": dx
   "bin/labels": dx
-  "lode/**/*": dx
   "docs/**/*": docs-site

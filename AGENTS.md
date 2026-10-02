@@ -207,8 +207,10 @@ Workers can define `after_unlock` instance or class method for cleanup after loc
 
 Every pull request carries exactly one `type` label and at least one `area`
 label from `.github/labels.yml` — never a `status` label. `/plan` labels the
-issue, `/lfg` copies the issue's labels onto the PR (or infers them:
-`bin/labels infer $(git diff --name-only origin/main...HEAD)`). Labels change in
+issue, `/lfg` copies the issue's `type` and `area` labels onto the PR (never
+`plan` or another status label). Without an issue, the type comes from the
+change's conventional-commit prefix and the areas from
+`bin/labels infer $(git diff --name-only origin/main...HEAD)`. Labels change in
 the manifest and reach GitHub with `bin/labels sync`, never through the UI.
 Rules: `.github/LABELS.md`. `bin/labels` + `.github/LABELS.md` are the shared
 labels kit (canonical copy in docs-kit): never edit them in place.

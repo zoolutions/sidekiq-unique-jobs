@@ -2,7 +2,7 @@
 description: "Executes full autonomous engineering workflow with verification. Use when implementing complete features, tackling GitHub issues, or running end-to-end development cycles."
 model: opus
 argument-hint: "GitHub issue number/URL or feature description"
-allowed-tools: Bash(gh issue view:*), Bash(gh search:*), Bash(gh issue list:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(bin/labels infer:*), Bash(bin/labels sync), Bash(bundle exec:*), Bash(git:*), Read, Write, Edit, Glob, Grep, Agent
+allowed-tools: Bash(gh issue view:*), Bash(gh search:*), Bash(gh issue list:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr view:*), Bash(bin/labels infer:*), Bash(bin/labels sync), Bash(bin/labels sync --dry-run), Bash(bundle exec:*), Bash(git:*), Read, Write, Edit, Glob, Grep, Agent
 ---
 
 # LFG - Full Autonomous Workflow
@@ -32,7 +32,7 @@ gh issue view <number> --json title,body,labels,assignees,comments
 
 If `$ARGUMENTS` is a description, use it directly.
 
-**Keep the issue's `type` and `area` labels** — Phase 7 puts them on the pull request. `/lfg` never edits the issue's own labels; the issue's lifecycle is the user's to manage. A `docs/plans/*.md` plan carries them on its `Labels:` line. If there are none, or you were given a description, pin the `type` now (one, per `.github/LABELS.md`); the areas come from the actual changed paths when the PR is opened, via `bin/labels infer`.
+**Keep the issue's `type` and `area` labels** — Phase 7 puts them on the pull request. `/lfg` never edits the issue's own labels; the issue's lifecycle is the user's to manage. A `docs/plans/*.md` plan carries them on its `Labels:` line. If either group is missing, or you were given a description, pin the `type` now (one, per `.github/LABELS.md`); the areas come from the actual changed paths when the PR is opened, via `bin/labels infer`.
 
 ### Step 2: Define Acceptance Criteria
 
@@ -259,7 +259,7 @@ EOF
 )"
 ```
 
-**Label the PR — every time.** The `--label` flags are the issue's `type` + `area` labels from Phase 1, never a `status` label (`plan`, `epic`, …). For a description-only run, infer them: one `type` (`.github/LABELS.md` maps conventional-commit prefixes to types) plus `bin/labels infer $(git diff --name-only origin/main...HEAD)`. Exactly one type, at least one area: when `infer` prints nothing (changes confined to unmapped paths such as specs, the README or the Gemfile), pick the closest area by hand — never zero. `gh pr create` fails on a label that doesn't exist on GitHub: run `bin/labels sync` (or label after the fact with `gh pr edit <n> --add-label …`).
+**Label the PR — every time.** The `--label` flags are the issue's `type` + `area` labels from Phase 1, never a `status` label (`plan`, `epic`, …). For a description-only run, infer them: one `type` (`.github/LABELS.md` maps conventional-commit prefixes to types) plus `bin/labels infer $(git diff --name-only origin/main...HEAD)`. Exactly one type, at least one area: when `infer` prints nothing (changes confined to unmapped paths such as specs, the README or the Gemfile), pick the closest area by hand — never zero. `gh pr create` fails on a label that doesn't exist on GitHub: run `bin/labels sync` first, then re-run the create (`gh pr edit <n> --add-label …` labels a PR that is already open, once the labels exist).
 
 ---
 
