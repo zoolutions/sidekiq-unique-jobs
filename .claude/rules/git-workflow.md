@@ -34,7 +34,7 @@ Refs #123
 2. Make focused, atomic commits
 3. Run all validators before pushing
 4. Create PR with description and test plan
-5. Label the PR: exactly one `type` + at least one `area` (`gh pr create --label …`), never a `status` label. `bin/labels infer <changed paths>` gives the areas; the taxonomy is `.github/labels.yml`, the rules are `.github/LABELS.md`
+5. Label the PR: exactly one `type` + at least one `area` (as `--label …` flags on the `gh pr create` call itself; `gh pr edit <n> --add-label …` if the PR is already open), never a `status` label. `bin/labels infer <changed paths>` gives the areas; the taxonomy is `.github/labels.yml`, the rules are `.github/LABELS.md`
 6. Request review
 7. Squash merge when approved
 

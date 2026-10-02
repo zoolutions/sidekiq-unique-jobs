@@ -10,8 +10,9 @@ bin/labels sync             # create and update
 bin/labels sync --delete    # also remove labels the manifest dropped
 ```
 
-Never add or edit a label in the GitHub UI: the next sync reverts it, and the
-reason for it is nowhere in the history. Change `labels.yml` in a pull request,
+Never add or edit a label in the GitHub UI: `sync` reverts an edit,
+`sync --delete` removes a label the manifest doesn't list, and the reason for
+either change is nowhere in the history. Change `labels.yml` in a pull request,
 then sync.
 
 ## The rule
