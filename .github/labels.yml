@@ -196,7 +196,6 @@ paths:
   "lib/sidekiq_unique_jobs/{lock,lock_*,locksmith,unlockable}.rb": locks
   "lib/sidekiq_unique_jobs/{lua,script}/**/*": lua
   "lib/sidekiq_unique_jobs/{lua,script}.rb": lua
-  "lib/sidekiq_unique_jobs/script.rb": lua
   "lib/sidekiq_unique_jobs/on_conflict/**/*": conflicts
   "lib/sidekiq_unique_jobs/on_conflict.rb": conflicts
   "lib/sidekiq_unique_jobs/middleware/**/*": middleware
@@ -216,6 +215,7 @@ paths:
   "spec/sidekiq_unique_jobs/on_conflict/**/*": conflicts
   "spec/sidekiq_unique_jobs/orphans/**/*": reaper
   "spec/sidekiq_unique_jobs/web/**/*": web
+  "spec/sidekiq_unique_jobs/lock_*_spec.rb": locks
   "spec/sidekiq_unique_jobs/lock_spec.rb": locks
   "spec/sidekiq_unique_jobs/{lock,lock_*,locksmith,unlockable}_spec.rb": locks
   "spec/sidekiq_unique_jobs/on_conflict_spec.rb": conflicts
