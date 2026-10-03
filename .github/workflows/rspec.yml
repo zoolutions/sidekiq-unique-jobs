@@ -16,7 +16,7 @@ jobs:
         ports:
           - 6379:6379
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - uses: actions/checkout@v7
@@ -37,7 +37,7 @@ jobs:
         ports:
           - 6379:6379
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     strategy:
       fail-fast: true

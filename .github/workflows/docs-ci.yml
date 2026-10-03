@@ -30,7 +30,7 @@ defaults:
 
 jobs:
   docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     name: Build & test
     steps:
       - uses: actions/checkout@v7
