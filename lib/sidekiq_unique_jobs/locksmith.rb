@@ -283,7 +283,7 @@ module SidekiqUniqueJobs
     # @return [nil] when lock was not possible
     # @return [Object] whatever the block returns when lock was acquired
     #
-    def primed_async(conn, wait = nil, &block)
+    def primed_async(_conn, wait = nil, &block)
       timeout = (wait || config.timeout).to_i
       timeout = 1 if timeout.zero?
 
@@ -298,8 +298,15 @@ module SidekiqUniqueJobs
 
       # NOTE: When debugging, change .value to .value!
       executor = SidekiqUniqueJobs.config.locksmith_executor
+      redis_pool = Sidekiq.redis_pool
       primed_jid = Concurrent::Promises
-        .future_on(executor, conn) { |red_con| pop_queued(red_con, timeout) }
+        .future_on(executor, redis_pool) do |pool|
+          # The outer redis block can time out and return its connection to
+          # Sidekiq's pool while this future is still running. Check out a
+          # separate connection from the caller's pool so the future never
+          # shares a socket with a Sidekiq fetcher or uses the internal pool.
+          pool.with { |red_con| pop_queued(red_con, timeout) }
+        end
         .value(concurrent_timeout) # Timeout to prevent indefinite blocking
 
       # If promise times out, primed_jid will be nil
