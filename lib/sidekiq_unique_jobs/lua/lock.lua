@@ -23,7 +23,8 @@ redis.call("HSET", locked, job_id, metadata)
 
 local score
 if lock_type == "until_expired" and pttl and pttl > 0 then
-  score = current_time + pttl
+  -- current_time is seconds, pttl is ms; the reaper compares scores in seconds
+  score = current_time + pttl / 1000
 else
   score = current_time
 end
