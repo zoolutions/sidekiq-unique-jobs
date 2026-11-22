@@ -32,6 +32,19 @@ RSpec.describe SidekiqUniqueJobs::Lock::UntilExpired do
 
   describe "#lock" do
     it_behaves_like "a lock implementation"
+
+    context "with a lock_ttl" do
+      let(:item_one) { super().merge("lock_ttl" => 3_600) }
+
+      # Regression for #964: pttl (ms) was added to a seconds timestamp
+      it "scores the digest at expiry time in seconds" do
+        process_one.lock
+        digest = item_one[SidekiqUniqueJobs::LOCK_DIGEST]
+        score = zscore(SidekiqUniqueJobs::DIGESTS, digest).to_f
+
+        expect(score).to be_within(5).of(Time.now.to_f + 3_600)
+      end
+    end
   end
 
   describe "#execute" do
